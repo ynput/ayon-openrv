@@ -59,8 +59,6 @@ class OpenRVWorkfileCreator(AutoCreator):
         task_name = legacy_io.Session["AVALON_TASK"]
         host_name = legacy_io.Session["AVALON_APP"]
 
-        self.log.info("existing_instna::{}".format(existing_instance))
-        self.log.info("asset_name::{}".format(asset_name))
         if existing_instance is None:
             asset_doc = get_asset_by_name(project_name, asset_name)
             subset_name = self.get_subset_name(
