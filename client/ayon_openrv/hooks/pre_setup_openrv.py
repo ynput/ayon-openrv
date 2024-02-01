@@ -33,7 +33,7 @@ class PreSetupOpenRV(PreLaunchHook):
         # Packages/ folder then we don't need to `rvpkg -add` them afterwards
         packages_dest_folder = op_support_path / "Packages"
         packages_dest_folder.mkdir(exist_ok=True)
-        packages = ["comments", "openpype_menus", "openpype_scripteditor"]
+        packages = ["comments", "ayon_menus", "ayon_scripteditor"]
         for package_name in packages:
             package_src = packages_src_folder / package_name
             package_dest = packages_dest_folder / "{}.zip".format(package_name)

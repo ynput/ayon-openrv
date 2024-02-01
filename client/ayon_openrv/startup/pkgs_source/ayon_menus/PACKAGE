@@ -1,4 +1,4 @@
-package: openpype_menus
+package: ayon_menus
 author: Aleks Katunar
 organization: Artisan software Dobro
 version: 1.0
@@ -8,10 +8,10 @@ requires: ''
 optional: true
 
 modes: 
-  - file: openpype_menus
+  - file: ayon_menus
     load: immediate
 
 description: |
 
-  <p> Adds OpenPype to OpenRV </p>
+  <p> Adds Ayon to OpenRV </p>
 

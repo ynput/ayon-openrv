@@ -1,4 +1,4 @@
-package: openpype_scripteditor
+package: ayon_scripteditor
 author: Roy Nieterau
 organization: Colorbleed
 version: 1.0
@@ -8,7 +8,7 @@ requires: ''
 optional: true
 
 modes:
-  - file: openpype_scripteditor
+  - file: ayon_scripteditor
     load: immediate
 
 description: |
