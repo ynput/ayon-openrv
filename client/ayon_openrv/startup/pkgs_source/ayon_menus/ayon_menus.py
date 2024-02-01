@@ -52,7 +52,7 @@ class OpenPypeMenus(MinorMode):
                 # Menu name
                 # NOTE: If it already exists it will merge with existing
                 # and add submenus / menuitems to the existing one
-                ("OpenPype", [
+                ("Ayon", [
                     # Menuitem name, actionHook (event), key, stateHook
                     ("Create...", self.create, None, None),
                     ("Load...", self.load, None, None),
