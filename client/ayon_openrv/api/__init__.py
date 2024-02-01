@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""OpenRV OpenPype host API."""
+"""OpenRV Ayon host API."""
 
 from .pipeline import (
     OpenRVHost

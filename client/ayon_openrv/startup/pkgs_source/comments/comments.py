@@ -55,7 +55,7 @@ class ReviewMenu(MinorMode):
     def __init__(self):
         MinorMode.__init__(self)
         self.init("py-ReviewMenu-mode", None, None,
-                  [("OpenPype", [
+                  [("Ayon", [
                       ("_", None),  # separator
                       ("Review", self.runme, None, self._is_active)
                   ])],
@@ -139,7 +139,7 @@ class ReviewMenu(MinorMode):
         self.rvWindow = rv.qtutils.sessionWindow()
         if self.dockWidget is None:
             # Create DockWidget and add the Custom Widget on first run
-            self.dockWidget = QtWidgets.QDockWidget("OpenPype Review",
+            self.dockWidget = QtWidgets.QDockWidget("Ayon Review",
                                                     self.rvWindow)
             self.dockWidget.setWidget(self.customDockWidget)
 

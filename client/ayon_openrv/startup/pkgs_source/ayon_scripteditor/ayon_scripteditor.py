@@ -4,8 +4,8 @@ from rv.rvtypes import MinorMode
 
 from qtpy import QtCore
 
-# On OpenPype installation it moves `openpype.modules` entries into
-# `openpype_modules`. However, if OpenPype installation has not triggered yet.
+# On Ayon installation it moves `openpype.modules` entries into
+# `openpype_modules`. However, if Ayon installation has not triggered yet.
 # For example when the ayon_menus RV package hasn't loaded then the move
 # of that package hasn't happened. So we'll allow both ways to import to ensure
 # it is found
@@ -15,12 +15,12 @@ except ModuleNotFoundError:
     from openpype.modules.python_console_interpreter.window import PythonInterpreterWidget  # noqa
 
 
-class OpenPypeMenus(MinorMode):
+class AyonMenus(MinorMode):
 
     def __init__(self):
         MinorMode.__init__(self)
         self.init(
-            name="py-openpype-scripteditor",
+            name="py-ayon-scripteditor",
             globalBindings=None,
             overrideBindings=None,
             menu=[
@@ -79,4 +79,4 @@ class OpenPypeMenus(MinorMode):
 
 
 def createMode():
-    return OpenPypeMenus()
+    return AyonMenus()

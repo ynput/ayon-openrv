@@ -17,8 +17,8 @@ from openpype.pipeline import (
 from ayon_openrv.api import OpenRVHost
 
 # TODO (Critical) Remove this temporary hack to avoid clash with PyOpenColorIO
-#   that is contained within OpenPype's venv
-# Ensure PyOpenColorIO is loaded from RV instead of from OpenPype lib by
+#   that is contained within Ayon's venv
+# Ensure PyOpenColorIO is loaded from RV instead of from Ayon lib by
 # moving all rv related paths to start of sys.path so RV libs are imported
 # We consider the `/openrv` folder the root to  `/openrv/bin/rv` executable
 rv_root = os.path.normpath(os.path.dirname(os.path.dirname(sys.executable)))
@@ -40,12 +40,12 @@ def install_openpype_to_host():
     install_host(host)
 
 
-class OpenPypeMenus(MinorMode):
+class AyonMenus(MinorMode):
 
     def __init__(self):
         MinorMode.__init__(self)
         self.init(
-            name="py-openpype",
+            name="py-ayon",
             globalBindings=None,
             overrideBindings=None,
             menu=[
@@ -128,4 +128,4 @@ def createMode():
     if not registered_host():
         install_openpype_to_host()
         data_loader()
-    return OpenPypeMenus()
+    return AyonMenus()

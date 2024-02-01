@@ -16,7 +16,7 @@ class PreSetupOpenRV(PreLaunchHook):
         executable = self.application.find_executable()
 
         # We use the `rvpkg` executable next to the `rv` executable to
-        # install and opt-in to the OpenPype plug-in packages
+        # install and opt-in to the Ayon plug-in packages
         rvpkg = Path(os.path.dirname(str(executable))) / "rvpkg"
         packages_src_folder = Path(OPENRV_ROOT_DIR) / "startup" / "pkgs_source"
 
@@ -24,12 +24,12 @@ class PreSetupOpenRV(PreLaunchHook):
         #   RV_SUPPORT_PATH on each launch. This would create redundant temp
         #   files that remain on disk but it does allow us to ensure RV is
         #   now running with the correct version of the RV packages of this
-        #   current running OpenPype version
+        #   current running Ayon version
         op_support_path = Path(tempfile.mkdtemp(
             prefix="openpype_rv_support_path_"
         ))
 
-        # Write the OpenPype RV package zips directly to the support path
+        # Write the Ayon RV package zips directly to the support path
         # Packages/ folder then we don't need to `rvpkg -add` them afterwards
         packages_dest_folder = op_support_path / "Packages"
         packages_dest_folder.mkdir(exist_ok=True)
@@ -41,7 +41,7 @@ class PreSetupOpenRV(PreLaunchHook):
             self.log.debug(f"Writing: {package_dest}")
             shutil.make_archive(str(package_dest), "zip", str(package_src))
 
-        # Install and opt-in the OpenPype RV packages
+        # Install and opt-in the Ayon RV packages
         install_args = [rvpkg, "-only", op_support_path, "-install", "-force"]
         install_args.extend(packages)
         optin_args = [rvpkg, "-only", op_support_path, "-optin", "-force"]

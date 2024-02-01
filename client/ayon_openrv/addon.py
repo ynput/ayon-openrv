@@ -1,11 +1,11 @@
 import os
-from openpype.modules import OpenPypeModule
+from openpype.modules import AYONAddon
 from openpype.modules.interfaces import IHostAddon
 
 OPENRV_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
-class OpenRVAddon(OpenPypeModule, IHostAddon):
+class OpenRVAddon(AYONAddon, IHostAddon):
     name = "openrv"
     host_name = "openrv"
 
