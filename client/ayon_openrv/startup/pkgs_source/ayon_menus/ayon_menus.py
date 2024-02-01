@@ -54,7 +54,6 @@ class AyonMenus(MinorMode):
                 # and add submenus / menuitems to the existing one
                 ("Ayon", [
                     # Menuitem name, actionHook (event), key, stateHook
-                    ("Create...", self.create, None, None),
                     ("Load...", self.load, None, None),
                     ("Publish...", self.publish, None, None),
                     ("Manage...", self.scene_inventory, None, None),
@@ -71,10 +70,6 @@ class AyonMenus(MinorMode):
     @property
     def _parent(self):
         return rv.qtutils.sessionWindow()
-
-    def create(self, event):
-        host_tools.show_publisher(parent=self._parent,
-                                  tab="create")
 
     def load(self, event):
         host_tools.show_loader(parent=self._parent, use_context=True)
