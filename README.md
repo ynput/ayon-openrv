@@ -1,50 +1,16 @@
-# Addon template
-This is a boilerplate git repository for creating new ayon addons.
+# OpenRV addon
+This adds integration to OpenRV https://github.com/AcademySoftwareFoundation/OpenRV.
+OpenRV is open source version of RV - image and sequence viewer for VFX and animation artists.
+
+This addon doesn't provide OpenRV binaries because of licencing. Studios need to build appropriate binaries for OS they are using themselves.
 
 
-## Folder structure
-All addons must have server code which is located in `server` subfolder. Server side addon definition is entrypoint for each addon. Can define settings, frontend, custom endpoints, etc. Root by default contains `create_package.py` which is a helper script that prepares package structure for server. The script may be modified or expanded by needs of addon (e.g. when frontend needs to be build first). File with `version.py` is kept at the root and is copied to server and client code with script -> The reason is to make sure both parts contain same version.
+## Settings
+Path to binaries must be set in the Ayon Setting in `Applications` addon (`ayon+settings://applications/applications/openrv`) and added in `Anatomy`.`Attributes` for particular project to be visible in the Launcher.
 
-### Server content
-Default base of server addon is `__init__.py` file in root of repository which define addon for server. Most of addons have settings that's why `settings.py` is by default in the structure. Settings can be changed to folder/module when more than one file is needed.
+### Implemented workflows
+Currently there is workflow for versioning and tracking `.rv` workfiles. Instance of `workfile` product type is automatically created when `Publish` option in `Ayon` menu inside of `OpenRV` is pressed.
 
-#### Server frontend
-Addons may have their frontend. By default, server looks into `~/frontend/dist` for `index.html` and addon have to have specified scopes where the frontend should be showed (check documentation of `frontend_scopes` on server addon implementation for more information).
+Another workflow would be publishing of `annotations`, but that is still WIP right now.
 
-#### Private server files
-Root of addon may contain subfolder `private` where can be added files that are accessible via ayon server. Url schema is `{server url}/addons/{addon name}/{addon_version}/private/*`. By default it is place where client zip file is created (during package creation). The endpoint requires authorized user.
-
-#### Public server files
-Public files works the same as private files but does not require authorized user. Subfolder name is `public`. Url schema is `{server url}/addons/{addon name}/{addon_version}/public/*`. Endpoint is helpful for images/icons or other static content.
-
-### Client content
-Addons that have code for desktop client application should create subfolder `client` where a client content is located. It is expected the directory has only one file or folder in it which is named the way how should be imported on a client side (e.g. `ayon_core`).
-
-
-### Example strucutre
-```
-├─ server
-│ ├─ frontend
-│ │ └─ dist
-│ │  └─ index.html
-│ │
-│ ├─ public
-│ │ └─ my_icon.png
-│ │
-│ ├─ private
-│ │ └─ kittens.png
-│ │
-│ ├─ __init__.py
-│ └─ settings.py
-│
-├─ client
-│ └─ openpype_core
-│   ├─ pipeline
-│   ├─ lib
-│   └─ ...
-│
-├─ create_package.py
-├─ README.md
-├─ LICENSE
-└─ version.py
-```
+Integrations allows to load image, image sequence or `.mov` files to the `.rv` workfile.
