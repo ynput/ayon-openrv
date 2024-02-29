@@ -3,8 +3,8 @@ import qtawesome
 from ayon_openrv.api.pipeline import (
     read, imprint
 )
-from openpype.client import get_asset_by_name
-from openpype.pipeline import (
+from ayon_core.client import get_asset_by_name
+from ayon_core.pipeline import (
     AutoCreator,
     CreatedInstance,
     legacy_io
