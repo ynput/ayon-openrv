@@ -46,35 +46,35 @@ def install_openpype_to_host():
 
 
 class AyonMenus(MinorMode):
-
     def __init__(self):
         MinorMode.__init__(self)
         self.init(
-            name="py-ayon",
-            globalBindings=None,
-            overrideBindings=None,
-            menu=[
-                # Menu name
-                # NOTE: If it already exists it will merge with existing
-                # and add submenus / menuitems to the existing one
-                ("Ayon", [
-                    # Menuitem name, actionHook (event), key, stateHook
+            "",
+            None,
+            [
+                ("ayon_open_loader", self.load, "Opens AYON Loader."),
+                ("ayon_load_container", on_ayon_load_container, "Loads an AYON representation into the session.")
+            ],
+            self.build_menu(),
+        )
+
+    @property
+    def _parent(self):
+        return rv.qtutils.sessionWindow()
+
+    def build_menu(self):
+        return [
+            (
+                "Ayon", [
                     ("Load...", self.load, None, None),
                     ("Publish...", self.publish, None, None),
                     ("Manage...", self.scene_inventory, None, None),
                     ("Library...", self.library, None, None),
                     ("_", None),  # separator
                     ("Work Files...", self.workfiles, None, None),
-                ])
-            ],
-            # initialization order
-            sortKey="source_setup",
-            ordering=15
-        )
-
-    @property
-    def _parent(self):
-        return rv.qtutils.sessionWindow()
+                ]
+            )
+        ]
 
     def load(self, event):
         host_tools.show_loader(parent=self._parent, use_context=True)
