@@ -107,8 +107,7 @@ def data_loader():
 
 
 def load_data(dataset=None):
-
-    project_name = os.environ["AVALON_PROJECT"]
+    project_name = os.environ["AYON_PROJECT_NAME"]
     available_loaders = discover_loader_plugins(project_name)
     Loader = next(loader for loader in available_loaders
                   if loader.__name__ == "FramesLoader")
