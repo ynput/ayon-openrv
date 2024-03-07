@@ -34,7 +34,7 @@ class RvCommunicator:
     Connections from the local machine are assumed to be safe.
     """
 
-    def __init__(self, name="rvCommunicator-1", noPP=True):
+    def __init__(self, name="rvCommunicator-1", noPP=False):
         """
         "name" should be unique among all clients of the network
         protocol.
@@ -43,7 +43,7 @@ class RvCommunicator:
         self.defaultPort = 45124
         self.port = self.defaultPort
         self.connected = False
-        self.sock = 0
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.name = name
         self.handlers = {}
         self.eventQueue = []
@@ -54,8 +54,8 @@ class RvCommunicator:
         Connect to the specified host/port, exchange greetings with
         RV, turn off heartbeat if so desired.
         """
-        if self.connected:
-            self.close()
+        # if self.connected:
+        #     self.close()
 
         if port != -1:
             self.port = port
@@ -73,8 +73,9 @@ class RvCommunicator:
             return
 
         try:
-            greeting = "%s rvController" % self.name
-            self.sock.sendall("NEWGREETING %d %s" % (len(greeting), greeting))
+            greeting = f"{self.name} rvController"
+            cmd = f"NEWGREETING {len(greeting)} {greeting}"
+            self.sock.sendall(cmd.encode("utf-8"))
             if self.noPingPong:
                 self.sock.sendall("PINGPONGCONTROL 1 0")
         except socket.error as msg:
@@ -99,7 +100,8 @@ class RvCommunicator:
         """
         For internal use.  Send and arbitrary message.
         """
-        self.sock.sendall("MESSAGE %d %s" % (len(message), message))
+        msg = f"MESSAGE {len(message)} {message}"
+        self.sock.sendall(msg.encode("utf-8"))
 
     def sendEvent(self, eventName, eventContents):
         """
@@ -147,24 +149,25 @@ class RvCommunicator:
                 self.connected = False
 
         except socket.error as msg:
-            if (
-                msg[1] != "Resource temporarily unavailable"
-                and msg[1]
-                != "A non-blocking socket operation could not be completed immediately"
-                and msg[0] != 10035
-            ):
-                print("ERROR: peek for messages failed: %s\n" % msg, file=sys.stderr)
-            if msg[0] == 10054 or msg[1] == "Connection reset by peer":
-                print("ERROR: remote host closed connection (2)\n", file=sys.stderr)
-                self.sock.close()
-                self.connected = False
+            log(msg)
+            # if (
+            #     msg[1] != "Resource temporarily unavailable"
+            #     and msg[1]
+            #     != "A non-blocking socket operation could not be completed immediately"
+            #     and msg[0] != 10035
+            # ):
+            #     print("ERROR: peek for messages failed: %s\n" % msg, file=sys.stderr)
+            # if msg[0] == 10054 or msg[1] == "Connection reset by peer":
+            #     print("ERROR: remote host closed connection (2)\n", file=sys.stderr)
+            #     self.sock.close()
+            #     self.connected = False
 
         return available
 
     def _receiveMessageField(self):
         field = ""
         while True:
-            c = self.sock.recv(1)
+            c = str(self.sock.recv(1))
             if c == " ":
                 break
             field += c
@@ -258,7 +261,6 @@ class RvCommunicator:
         self._processEvents()
 
     def _processEvents(self, processReturnOnly=False):
-
         while 1:
             noMessage = True
             while noMessage:
