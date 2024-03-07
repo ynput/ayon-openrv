@@ -16,6 +16,11 @@ from ayon_core.pipeline import (
 )
 from ayon_openrv.api import OpenRVHost
 
+
+from ayon_core.lib import Logger
+log = Logger.get_logger(__name__)
+
+
 # TODO (Critical) Remove this temporary hack to avoid clash with PyOpenColorIO
 #   that is contained within Ayon's venv
 # Ensure PyOpenColorIO is loaded from RV instead of from Ayon lib by
