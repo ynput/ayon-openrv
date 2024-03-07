@@ -4,7 +4,11 @@ import json
 from collections import OrderedDict
 
 import pyblish
-import rv
+
+try:
+    import rv
+except ImportError:
+    pass
 
 from ayon_core.host import HostBase, ILoadHost, IWorkfileHost, IPublishHost
 from ayon_openrv import OPENRV_ROOT_DIR
