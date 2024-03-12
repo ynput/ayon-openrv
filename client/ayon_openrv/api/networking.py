@@ -34,7 +34,7 @@ class RvCommunicator:
     Connections from the local machine are assumed to be safe.
     """
 
-    def __init__(self, name="rvCommunicator-1", noPP=False):
+    def __init__(self, name="rvCommunicator-1", noPP=True):
         """
         "name" should be unique among all clients of the network
         protocol.
@@ -140,7 +140,7 @@ class RvCommunicator:
                 self.connected = False
 
         except socket.error as msg:
-            log(msg)
+            print(f"Error in message available: {msg}")
             # self.sock.close()
             # self.connected = False
             # if (
@@ -184,6 +184,8 @@ class RvCommunicator:
             print(f"ERROR: can't process message: {msg}")
             # print("ERROR: can't process message: %s\n" % msg[1], file=sys.stderr)
             self.sock.setblocking(0)
+
+        print(f"receive locals: {locals()}")
 
         return (messType, messContents)
 
@@ -272,7 +274,7 @@ class RvCommunicator:
 
             (messType, messContents) = self._receiveSingleMessage()
 
-            print("message: %s %s" % (messType, messContents))
+            print("received message: %s %s" % (messType, messContents))
             if messType == "MESSAGE":
                 if messContents == "DISCONNECT":
                     try:
@@ -301,7 +303,7 @@ class RvCommunicator:
                     self.eventQueue.append((event, contents))
 
             elif messType == "PING":
-                self.sock.sendall("PONG 1 p")
+                self.sock.sendall("PONG 1 p".encode("utf-8"))
 
             elif (
                 messType == "GREETING"
