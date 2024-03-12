@@ -49,7 +49,7 @@ class RvCommunicator:
         self.eventQueue = []
         self.noPingPong = noPP
 
-    def connect(self, host, port=-1):
+    def connect(self, host, port: int = None):
         """
         Connect to the specified host/port, exchange greetings with
         RV, turn off heartbeat if so desired.
@@ -57,30 +57,21 @@ class RvCommunicator:
         # if self.connected:
         #     self.close()
 
-        if port != -1:
+        if port:
             self.port = port
 
         try:
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        except socket.error as msg:
-            print("ERROR: can't create socket: %s\n" % msg[1], file=sys.stderr)
-            return
-
-        try:
-            self.sock.connect((host, self.port))
-        except socket.error as msg:
-            print("ERROR: can't connect: %s\n" % msg[1], file=sys.stderr)
-            return
-
-        try:
-            greeting = f"{self.name} rvController"
-            cmd = f"NEWGREETING {len(greeting)} {greeting}"
-            self.sock.sendall(cmd.encode("utf-8"))
+            print(self.sock)
+            if not self.connected:
+                self.sock.connect((host, self.port))
+                greeting = f"{self.name} rvController"
+                cmd = f"NEWGREETING {len(greeting)} {greeting}"
+                self.sock.sendall(cmd.encode("utf-8"))
             if self.noPingPong:
-                self.sock.sendall("PINGPONGCONTROL 1 0")
+                self.sock.sendall("PINGPONGCONTROL 1 0".encode("utf-8"))
         except socket.error as msg:
-            print("ERROR: can't send greeting: %s\n" % msg[1], file=sys.stderr)
-            return
+            raise Exception(f"Can't establish connection to RV on {host}:{self.port}: {msg}")
 
         self.sock.setblocking(0)
         self.connected = True
@@ -150,6 +141,8 @@ class RvCommunicator:
 
         except socket.error as msg:
             log(msg)
+            # self.sock.close()
+            # self.connected = False
             # if (
             #     msg[1] != "Resource temporarily unavailable"
             #     and msg[1]
@@ -167,7 +160,7 @@ class RvCommunicator:
     def _receiveMessageField(self):
         field = ""
         while True:
-            c = str(self.sock.recv(1))
+            c = self.sock.recv(1).decode("utf-8")
             if c == " ":
                 break
             field += c
@@ -188,7 +181,8 @@ class RvCommunicator:
             self.sock.setblocking(0)
 
         except socket.error as msg:
-            print("ERROR: can't process message: %s\n" % msg[1], file=sys.stderr)
+            print(f"ERROR: can't process message: {msg}")
+            # print("ERROR: can't process message: %s\n" % msg[1], file=sys.stderr)
             self.sock.setblocking(0)
 
         return (messType, messContents)
@@ -277,7 +271,7 @@ class RvCommunicator:
 
             (messType, messContents) = self._receiveSingleMessage()
 
-            log("message: %s %s" % (messType, messContents))
+            print("message: %s %s" % (messType, messContents))
             if messType == "MESSAGE":
                 if messContents == "DISCONNECT":
                     try:
