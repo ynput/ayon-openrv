@@ -236,20 +236,21 @@ class RvCommunicator:
 
     def _processSingleMessage(self, contents):
         parts = contents.split()
-        messType = parts[0]
+        messType = parts[0].decode("utf-8")
 
         if messType == "RETURN":
             contents = ""
             if len(parts) > 1:
                 contents = " ".join(parts[1:])
-            return ("RETURN", contents)
-
+            eventName = "RETURN"
         elif messType == "EVENT":
             eventName = parts[1]
             contents = ""
             if len(parts) > 3:
                 contents = " ".join(parts[3:])
-            return (eventName, contents)
+
+        print(f"process single message locals: {locals()}")
+        return (eventName, contents)
 
     def processEvents(self):
         self._processEvents()
