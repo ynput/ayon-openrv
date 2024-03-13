@@ -6,9 +6,9 @@ import importlib
 import rv.qtutils
 from rv.rvtypes import MinorMode
 
-from openpype.tools.utils import host_tools
-from openpype.client import get_representations
-from openpype.pipeline import (
+from ayon_core.tools.utils import host_tools
+from ayon_core.client import get_representations
+from ayon_core.pipeline import (
     registered_host,
     install_host,
     discover_loader_plugins,

@@ -10,7 +10,7 @@ from qtpy import QtCore
 # of that package hasn't happened. So we'll allow both ways to import to ensure
 # it is found
 try:
-    from openpype_modules.python_console_interpreter.window import PythonInterpreterWidget  # noqa
+    from ayon_core.modules.python_console_interpreter.window import PythonInterpreterWidget  # noqa
 except ModuleNotFoundError:
     from openpype.modules.python_console_interpreter.window import PythonInterpreterWidget  # noqa
 
