@@ -14,7 +14,13 @@ from ayon_core.pipeline import (
     discover_loader_plugins,
     load_container
 )
+from ayon_core.lib.transcoding import IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
 from ayon_openrv.api import OpenRVHost
+
+
+from ayon_core.lib import Logger
+log = Logger.get_logger(__name__)
+
 
 # TODO (Critical) Remove this temporary hack to avoid clash with PyOpenColorIO
 #   that is contained within Ayon's venv
@@ -41,35 +47,35 @@ def install_openpype_to_host():
 
 
 class AyonMenus(MinorMode):
-
     def __init__(self):
         MinorMode.__init__(self)
         self.init(
-            name="py-ayon",
-            globalBindings=None,
-            overrideBindings=None,
-            menu=[
-                # Menu name
-                # NOTE: If it already exists it will merge with existing
-                # and add submenus / menuitems to the existing one
-                ("Ayon", [
-                    # Menuitem name, actionHook (event), key, stateHook
+            "",
+            None,
+            [
+                ("ayon_open_loader", self.load, "Opens AYON Loader."),
+                ("ayon_load_container", on_ayon_load_container, "Loads an AYON representation into the session.")
+            ],
+            self.build_menu(),
+        )
+
+    @property
+    def _parent(self):
+        return rv.qtutils.sessionWindow()
+
+    def build_menu(self):
+        return [
+            (
+                "Ayon", [
                     ("Load...", self.load, None, None),
                     ("Publish...", self.publish, None, None),
                     ("Manage...", self.scene_inventory, None, None),
                     ("Library...", self.library, None, None),
                     ("_", None),  # separator
                     ("Work Files...", self.workfiles, None, None),
-                ])
-            ],
-            # initialization order
-            sortKey="source_setup",
-            ordering=15
-        )
-
-    @property
-    def _parent(self):
-        return rv.qtutils.sessionWindow()
+                ]
+            )
+        ]
 
     def load(self, event):
         host_tools.show_loader(parent=self._parent, use_context=True)
@@ -101,12 +107,58 @@ def data_loader():
         print("No data for auto-loader")
 
 
-def load_data(dataset=None):
+def on_ayon_load_container(event):
+    # decode events contents
+    event_contents = json.loads(event.contents())
+    log.debug(f"{event_contents = }")
 
-    project_name = os.environ["AVALON_PROJECT"]
+    # separate generic nodes from ayon containers
+    generic_nodes = []
+    ayon_containers = {"FramesLoader": [], "MovLoader": []}
+    for node in event_contents:
+        if node.get("file"):
+            generic_nodes.append(node)
+            continue
+
+        if node.get("representation"):
+            for ext in IMAGE_EXTENSIONS:
+                ext = ext.lstrip(".")
+                if ext in node["objectName"].lower():
+                    ayon_containers["FramesLoader"].append(node)
+                    break
+            for ext in VIDEO_EXTENSIONS:
+                ext = ext.lstrip(".")
+                if ext in node["objectName"].lower():
+                    ayon_containers["MovLoader"].append(node)
+                    break
+
+    if ayon_containers["FramesLoader"]:
+        # load the container with appropriate loader plugin
+        # this enables us to use AYON manager for versioning
+        representation_ids = [i["representation"] for i in ayon_containers["FramesLoader"]]
+        log.debug(f"{representation_ids = }")
+        load_data(dataset=representation_ids, loader_type="FramesLoader")
+
+    if ayon_containers["MovLoader"]:
+        # load the container with appropriate loader plugin
+        # this enables us to use AYON manager for versioning
+        representation_ids = [i["representation"] for i in ayon_containers["MovLoader"]]
+        log.debug(f"{representation_ids = }")
+        load_data(dataset=representation_ids, loader_type="MovLoader")
+    
+    if generic_nodes:
+        # load them "normally" via networking or rv.commands
+        source_paths = list([n["file"] for n in generic_nodes])
+        log.debug(f"{source_paths = }")
+        rv.commands.addSourceVerbose(source_paths)
+
+
+#! the kwarg loader_type might break other things
+def load_data(dataset=None, loader_type="FramesLoader"):
+    project_name = os.environ["AYON_PROJECT_NAME"]
     available_loaders = discover_loader_plugins(project_name)
     Loader = next(loader for loader in available_loaders
-                  if loader.__name__ == "FramesLoader")
+                  if loader.__name__ == loader_type)
 
     representations = get_representations(project_name,
                                           representation_ids=dataset)
