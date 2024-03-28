@@ -1,6 +1,5 @@
-""" Providing models and setting values for image IO in OpenRV.
-    Copied from maya's settings
-"""
+"""Providing models and setting values for image IO in OpenRV."""
+
 from ayon_server.settings import (
     BaseSettingsModel,
     SettingsField,
