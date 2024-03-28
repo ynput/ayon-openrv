@@ -4,11 +4,15 @@ import json
 from collections import OrderedDict
 
 import pyblish
-import rv
 
-from openpype.host import HostBase, ILoadHost, IWorkfileHost, IPublishHost
+try:
+    import rv
+except ImportError:
+    pass
+
+from ayon_core.host import HostBase, ILoadHost, IWorkfileHost, IPublishHost
 from ayon_openrv import OPENRV_ROOT_DIR
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     register_loader_plugin_path,
     register_inventory_action_path,
     register_creator_plugin_path,

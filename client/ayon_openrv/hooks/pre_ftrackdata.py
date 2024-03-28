@@ -1,7 +1,7 @@
 import json
 import tempfile
 
-from openpype.lib import PreLaunchHook
+from ayon_core.lib import PreLaunchHook
 
 
 class PreFtrackData(PreLaunchHook):

@@ -1,6 +1,6 @@
 import os
-from openpype.modules import AYONAddon
-from openpype.modules.interfaces import IHostAddon
+from ayon_core.modules import AYONAddon
+from ayon_core.modules.interfaces import IHostAddon
 
 OPENRV_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 

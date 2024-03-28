@@ -1,7 +1,7 @@
 import logging
 
 import rv
-from openpype.pipeline.context_tools import get_current_project_asset
+from ayon_core.pipeline.context_tools import get_current_project_asset
 
 log = logging.getLogger(__name__)
 
