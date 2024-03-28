@@ -6,9 +6,9 @@ from .pipeline import (
 )
 
 from .networking import (
-    RvCommunicator
+    RVConnector
 )
 
 __all__ = [
-    "OpenRVHost", "RvCommunicator"
+    "OpenRVHost", "RVConnector"
 ]
