@@ -1,324 +1,148 @@
-#
-# Copyright (C) 2023  Autodesk, Inc. All Rights Reserved. 
-# 
-# SPDX-License-Identifier: Apache-2.0 
-#
-#! /usr/bin/python
-from __future__ import print_function
-
 import socket
-import sys
-import time
-import os
+from time import sleep
 
-doDebug = False
-if os.getenv("RV_NUKE_DEBUG") != None:
-    doDebug = True
-
-
-def log(str):
-    if doDebug:
-        print("net: %s\n" % str, file=sys.stderr)
-
-
-class RvCommunicator:
-    """
-    Wrap up connection and communciation with a running RV.  The
-    target RV process must have networking turned on and be
-    listening on some well-known port (you can make both these
-    happen from the command line: "-network -networkPort 45129".
-    But default, RV will listen on port 45124.
-
-    NOTE: if the target RV is not on the same machine as this
-    client, the user will need to specifically allow the connection.
-    Connections from the local machine are assumed to be safe.
-    """
-
-    def __init__(self, name="rvCommunicator-1", noPP=True):
-        """
-        "name" should be unique among all clients of the network
-        protocol.
-        noPP will disable ping-pong "heartbeat" messages.
-        """
-        self.defaultPort = 45124
-        self.port = self.defaultPort
-        self.connected = False
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+class RVConnector:
+    def __init__(self, name="ayon-rv-connect", host="localhost", port=45124):
         self.name = name
-        self.handlers = {}
-        self.eventQueue = []
-        self.noPingPong = noPP
+        self.host = host
+        self.port = port
+        self.is_connected = False
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    def connect(self, host, port: int = None):
-        """
-        Connect to the specified host/port, exchange greetings with
-        RV, turn off heartbeat if so desired.
-        """
-        # if self.connected:
-        #     self.close()
+        self.connect()
 
-        if port:
-            self.port = port
+    def __enter__(self):
+        """Enters the context manager."""
+        while not self.is_connected:
+            self.connect()
+            print("trying to connect...")
+        return self
 
+    def __exit__(self, *args):
+        """Exits the context manager."""
+        self.close()
+
+    @property
+    def message_available(self) -> bool:
+        """Checks if a message is available."""
         try:
-            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            print(self.sock)
-            if not self.connected:
-                self.sock.connect((host, self.port))
-                greeting = f"{self.name} rvController"
-                cmd = f"NEWGREETING {len(greeting)} {greeting}"
-                self.sock.sendall(cmd.encode("utf-8"))
-            if self.noPingPong:
-                self.sock.sendall("PINGPONGCONTROL 1 0".encode("utf-8"))
-        except socket.error as msg:
-            raise Exception(f"Can't establish connection to RV on {host}:{self.port}: {msg}")
+            msg = self.sock.recv(1, socket.MSG_PEEK)
+            if len(msg) > 0:
+                return True
+        except Exception as err:
+            print(err)
 
-        self.sock.setblocking(0)
-        self.connected = True
+        return False
 
-        self.processEvents()
+    def connect(self) -> None:
+        """Connects to the RV server."""
+        if self.is_connected:
+            return
+        self.__connect_socket()
 
-    def disconnect(self):
-        """
-        Disconnect from remote RV.
-        """
-        self._sendMessage("DISCONNECT")
-        self.sock.shutdown(socket.SHUT_RDWR)
-        self.sock.close()
-        self.connected = False
+    def send_message(self, message):
+        print(f"send_message: {message}")
+        if not self.is_connected:
+            return
 
-    def _sendMessage(self, message):
-        """
-        For internal use.  Send and arbitrary message.
-        """
         msg = f"MESSAGE {len(message)} {message}"
-        self.sock.sendall(msg.encode("utf-8"))
+        try:
+            self.sock.sendall(msg.encode("utf-8"))
+        except Exception:
+            self.close()
 
-    def sendEvent(self, eventName, eventContents):
-        """
-        Send a remote event.  eventName must be one of the events
-        listed in the RV Reference Manual.
-        """
-        message = "EVENT %s * %s" % (eventName, eventContents)
-        self._sendMessage(message)
-
-    def sendEventAndReturn(self, eventName, eventContents):
+    def send_event(self, eventName, eventContents, shall_return=True):
         """
         Send a remote event, then wait for a return value (string).
         eventName must be one of the events
         listed in the RV Reference Manual.
         """
-        message = "RETURNEVENT %s * %s" % (eventName, eventContents)
-        self._sendMessage(message)
-        return self._processEvents(True)
+        message = f"RETURNEVENT {eventName} * {eventContents}"
+        self.send_message(message)
+        if shall_return:
+            return self.__process_events(process_return_only=True)
 
-    def remoteEval(self, code):
-        """
-        Special case of sendEvent, remote-eval is the most common remote event.
-        """
-        self.sendEvent("remote-eval", code)
+    def close(self):
+        if self.is_connected:
+            self.send_message("DISCONNECT")
+            sleep(0.01) # wait for the message to be sent
+        
+        self.sock.shutdown(socket.SHUT_RDWR)
+        self.sock.close()
+        self.is_connected = False
 
-    def remoteEvalAndReturn(self, code):
-        """
-        Special case of sendEventAndReturn, remote-eval is the most common remote event.
-        """
+    def receive_message(self):
+        msg_type, msg_data = "", None
 
-        return self.sendEventAndReturn("remote-eval", code)
-
-    def messageAvailable(self):
-        """
-        Return true iff there is an incomming message waiting.
-        """
-        available = False
         try:
-            data = self.sock.recv(1, socket.MSG_PEEK)
-            if len(data) != 0:
-                available = True
-            else:
-                print("ERROR: remote host closed connection (1)\n", file=sys.stderr)
-                self.sock.close()
-                self.connected = False
+            while True:
+                char = self.sock.recv(1).decode("utf-8")
+                if char == " ":
+                    break
+                msg_type += char
+            msg_data = self.sock.recv(
+                len(msg_type)).decode("utf-8")
+        except Exception as err:
+            print(err)
 
-        except socket.error as msg:
-            print(f"Error in message available: {msg}")
-            # self.sock.close()
-            # self.connected = False
-            # if (
-            #     msg[1] != "Resource temporarily unavailable"
-            #     and msg[1]
-            #     != "A non-blocking socket operation could not be completed immediately"
-            #     and msg[0] != 10035
-            # ):
-            #     print("ERROR: peek for messages failed: %s\n" % msg, file=sys.stderr)
-            # if msg[0] == 10054 or msg[1] == "Connection reset by peer":
-            #     print("ERROR: remote host closed connection (2)\n", file=sys.stderr)
-            #     self.sock.close()
-            #     self.connected = False
+        return (msg_type, msg_data)
 
-        return available
+    def __send_initial_greeting(self):
+        greeting = f"{self.name} rvController"
+        cmd = f"NEWGREETING {len(greeting)} {greeting}"
+        try:
 
-    def _receiveMessageField(self):
-        field = ""
+            self.sock.sendall(cmd.encode("utf-8"))
+        except Exception:
+            self.is_connected = False
+
+    def process_message(self, data):
+        print(f"process message: {data = }")
+
+    def __process_events(self, process_return_only=False):
         while True:
-            c = self.sock.recv(1).decode("utf-8")
-            if c == " ":
-                break
-            field += c
-
-        return field
-
-    def _receiveSingleMessage(self):
-
-        messType = 0
-        messContents = 0
-
-        try:
-            messType = self._receiveMessageField()
-            messSize = int(self._receiveMessageField())
-
-            self.sock.setblocking(1)
-            messContents = self.sock.recv(messSize)
-            self.sock.setblocking(0)
-
-        except socket.error as msg:
-            print(f"ERROR: can't process message: {msg}")
-            # print("ERROR: can't process message: %s\n" % msg[1], file=sys.stderr)
-            self.sock.setblocking(0)
-
-        print(f"receive locals: {locals()}")
-
-        return (messType, messContents)
-
-    def bindToEvent(self, eventName, eventHandler):
-        """
-        Bind to a remote event.  That is provide a python function
-        (that takes a single string argument), which will be called
-        whenever the remote event occurs.  The event contents will
-        be provided to the eventHandler as a string.
-
-        It's probably better if the eventHandler does not itself
-        send events, but just sets state for later action.
-        """
-        eventHandlerString = str(eventHandler).split()[1]
-        remoteHandlerName = "remoteHandler%s_%s" % (
-            eventHandlerString,
-            "_".join(eventName.split("-")),
-        )
-        remoteCode = """
-        require commands;
-
-        function: %s (void; Event event)
-        {
-            string contact = nil;
-            for_each (c; commands.remoteConnections())
-            {
-                if (regex("%s@").match(c)) contact = c;
-            }
-
-            if (contact neq nil)
-            {
-                commands.remoteSendEvent ("%s", "*",
-                        event.contents(), string[] {contact});
-            }
-            event.reject();
-        }
-        commands.bind("default", "global", "%s", %s, "python event handler");
-        true;
-
-        """ % (
-            remoteHandlerName,
-            self.name,
-            eventName,
-            eventName,
-            remoteHandlerName,
-        )
-
-        if self.remoteEvalAndReturn(remoteCode) == "true":
-            self.handlers[eventName] = eventHandler
-
-    def _processSingleMessage(self, contents):
-        parts = contents.split()
-        messType = parts[0].decode("utf-8")
-
-        if messType == "RETURN":
-            contents = ""
-            if len(parts) > 1:
-                contents = " ".join(parts[1:])
-            eventName = "RETURN"
-        elif messType == "EVENT":
-            eventName = parts[1]
-            contents = ""
-            if len(parts) > 3:
-                contents = " ".join(parts[3:])
-
-        print(f"process single message locals: {locals()}")
-        return (eventName, contents)
-
-    def processEvents(self):
-        self._processEvents()
-
-    def _processEvents(self, processReturnOnly=False):
-        while 1:
-            noMessage = True
-            while noMessage:
-                if not self.connected:
+            while not self.message_available:
+                if not self.is_connected:
                     return ""
-                noMessage = not self.messageAvailable()
-                if noMessage and processReturnOnly:
-                    time.sleep(0.01)
+                
+                if not self.message_available and process_return_only:
+                    sleep(0.01)
                 else:
                     break
 
-            if noMessage:
+            if not self.message_available:
                 break
+            
+            # get single message
+            (resp_type, resp_data) = self.receive_message()
+            print(f"received message: {resp_type}: {resp_data}")
 
-            (messType, messContents) = self._receiveSingleMessage()
+            if resp_type == "MESSAGE":
+                if resp_data == "DISCONNECT":
+                    self.is_connected = False
+                    self.close()
+                    return
+                # (event, event_data) = self.process_message()
+                self.process_message()
 
-            print("received message: %s %s" % (messType, messContents))
-            if messType == "MESSAGE":
-                if messContents == "DISCONNECT":
-                    try:
-                        self.sock.shutdown(socket.SHUT_RDWR)
-                        self.sock.close()
-                    except:
-                        pass
-                    self.connected = False
-                    return ""
-
-                (event, contents) = self._processSingleMessage(messContents)
-
-                if event == "RETURN":
-                    if processReturnOnly:
-                        return contents
-                    else:
-                        print(
-                            "ERROR: out of order return: %s\n" % contents,
-                            file=sys.stderr,
-                        )
-                        return ""
-                elif (
-                    len(self.eventQueue) == 0
-                    or (event, contents) != self.eventQueue[-1:]
-                ):
-                    self.eventQueue.append((event, contents))
-
-            elif messType == "PING":
+            if resp_type == "PING":
                 self.sock.sendall("PONG 1 p".encode("utf-8"))
-
-            elif (
-                messType == "GREETING"
-                or messType == "NEWGREETING"
-                or messType == "PONG"
-            ):
-                #   ignore
+            if resp_type == "PONG":
                 pass
-            else:
-                print("ERROR: unknown message type: %s\n" % messType, file=sys.stderr)
+            if resp_type == "GREETING":
+                pass
+            if resp_type == "NEWGREETING":
+                pass
+            if resp_type == "NEWGREETING":
+                pass
+            # return msg
 
-        for (event, contents) in self.eventQueue:
-            if event in self.handlers:
-                self.handlers[event](contents)
-
-        self.eventQueue = []
-
-        return ""
+    def __connect_socket(self):
+        try:
+            self.sock.connect((self.host, self.port))
+            self.__send_initial_greeting()
+            self.sock.sendall("PINGPONGCONTROL 1 0".encode("utf-8"))
+            self.is_connected = True
+        except Exception as err:
+            print("Failed to establish connection. Is RV running?")
+            self.is_connected = False
