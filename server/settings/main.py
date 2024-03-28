@@ -3,7 +3,7 @@ from ayon_server.settings import (
     SettingsField,
 )
 
-from .imageio import ImageIOSettings, DEFAULT_IMAGEIO_SETTINGS
+from .imageio import ImageIOSettings
 
 
 class OpenRVSettings(BaseSettingsModel):
