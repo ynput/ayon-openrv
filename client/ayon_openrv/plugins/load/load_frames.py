@@ -112,7 +112,7 @@ class FramesLoader(load.LoaderPlugin):
         for doc in [representation, version]:
             # Frame range can be set on version or representation.
             # When set on representation it overrides version data.
-            data = doc.get("data", {})
+            data = doc.get("attrib", {})
             start = data.get("frameStartHandle", data.get("frameStart", None))
             end = data.get("frameEndHandle", data.get("frameEnd", None))
 
@@ -156,7 +156,7 @@ class FramesLoader(load.LoaderPlugin):
 
         context = copy.deepcopy(context)
         representation = context["representation"]
-        template = representation.get("data", {}).get("template")
+        template = representation.get("attrib", {}).get("template")
         if not template:
             # No template to find token locations for
             return get_representation_path_from_context(context)
@@ -182,7 +182,7 @@ class FramesLoader(load.LoaderPlugin):
                 has_tokens = True
 
         # Replace with our custom template that has the tokens set
-        representation["data"]["template"] = template
+        representation["attrib"]["template"] = template
         path = get_representation_path_from_context(context)
 
         if has_tokens:
@@ -193,7 +193,7 @@ class FramesLoader(load.LoaderPlugin):
         return path
 
     def set_representation_colorspace(self, node, representation):
-        colorspace_data = representation.get("data", {}).get("colorspaceData")
+        colorspace_data = representation.get("attrib", {}).get("colorspaceData")
         if colorspace_data:
             colorspace = colorspace_data["colorspace"]
             # TODO: Confirm colorspace is valid in current OCIO config
