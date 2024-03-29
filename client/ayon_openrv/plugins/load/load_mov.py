@@ -49,10 +49,10 @@ class MovLoader(load.LoaderPlugin):
             loader=self.__class__.__name__
         )
 
-    def update(self, container, representation):
+    def update(self, container, context):
         node = container["node"]
-        repr_id = representation["representation"]["_id"]
-        context = get_representation_context(representation["representation"])
+        repr_id = context["representation"]["_id"]
+        context = get_representation_context(context["representation"])
         filepath = load.get_representation_path_from_context(context)
         filepath = str(filepath)
 
