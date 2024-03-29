@@ -58,7 +58,7 @@ class FramesLoader(load.LoaderPlugin):
     def update(self, container, context):
         node = container["node"]
         repr_id = context["representation"]["id"]
-        context = get_representation_context(context["representation"])
+        context = get_representation_context(context["project"]["name"], context["representation"])
         filepath = self._format_path(context)
         filepath = str(filepath)
 
