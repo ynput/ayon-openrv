@@ -22,7 +22,7 @@ class FramesLoader(load.LoaderPlugin):
     """Load frames into OpenRV"""
 
     label = "Load Frames"
-    families = ["*"]
+    product_types = ["*"]
     representations = ["*"]
     extensions = [ext.lstrip(".") for ext in IMAGE_EXTENSIONS]
     order = 0
@@ -55,7 +55,7 @@ class FramesLoader(load.LoaderPlugin):
 
     def update(self, container, representation):
         node = container["node"]
-        repr_id = representation["representation"]["_id"]
+        repr_id = representation["representation"]["id"]
         context = get_representation_context(representation["representation"])
         filepath = self._format_path(context)
         filepath = str(filepath)
