@@ -58,7 +58,9 @@ class AyonMenus(MinorMode):
                 ("ayon_open_loader", self.load, "Opens AYON Loader."),
                 ("ayon_load_container", on_ayon_load_container, "Loads an AYON representation into the session.")
             ],
-            self.build_menu(),
+            menu=self.build_menu(),
+            sortKey=None,
+            ordering=0,
         )
 
     @property
