@@ -52,9 +52,9 @@ class AyonMenus(MinorMode):
     def __init__(self):
         MinorMode.__init__(self)
         self.init(
-            "",
-            None,
-            [
+            name="",
+            globalBindings=None,
+            overrideBindings=[
                 ("ayon_open_loader", self.load, "Opens AYON Loader."),
                 ("ayon_load_container", on_ayon_load_container, "Loads an AYON representation into the session.")
             ],
