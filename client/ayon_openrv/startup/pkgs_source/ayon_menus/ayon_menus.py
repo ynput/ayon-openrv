@@ -138,15 +138,17 @@ def on_ayon_load_container(event):
         # load the container with appropriate loader plugin
         # this enables us to use AYON manager for versioning
         representation_ids = [i["representation"] for i in ayon_containers["FramesLoader"]]
+        project = ayon_containers["FramesLoader"][0]["project_name"]
         log.debug(f"{representation_ids = }")
-        load_data(dataset=representation_ids, loader_type="FramesLoader")
+        load_data(project_name=project, dataset=representation_ids, loader_type="FramesLoader")
 
     if ayon_containers["MovLoader"]:
         # load the container with appropriate loader plugin
         # this enables us to use AYON manager for versioning
         representation_ids = [i["representation"] for i in ayon_containers["MovLoader"]]
+        project = ayon_containers["MovLoader"][0]["project_name"]
         log.debug(f"{representation_ids = }")
-        load_data(dataset=representation_ids, loader_type="MovLoader")
+        load_data(project_name=project, dataset=representation_ids, loader_type="MovLoader")
     
     if generic_nodes:
         # load them "normally" via networking or rv.commands
@@ -156,17 +158,19 @@ def on_ayon_load_container(event):
 
 
 #! the kwarg loader_type might break other things
-def load_data(dataset=None, loader_type="FramesLoader"):
-    project_name = os.environ["AYON_PROJECT_NAME"]
+def load_data(project_name=None, dataset=None, loader_type="FramesLoader"):
+    #? why does the project name rretrieval not work anymore
+    # project_name = get_current_project_name()   # this returns None for some reason
+    # project_name = os.environ["AYON_PROJECT_NAME"]  # this env var is not present anymore :/
+    
     available_loaders = discover_loader_plugins(project_name)
     Loader = next(loader for loader in available_loaders
                   if loader.__name__ == loader_type)
 
-    representations = get_representations(project_name,
-                                          representation_ids=dataset)
+    representations = get_representations(project_name, representation_ids=dataset)
 
     for representation in representations:
-        load_container(Loader, representation)
+        load_container(Loader, representation, project_name=project_name)
 
 
 def createMode():
