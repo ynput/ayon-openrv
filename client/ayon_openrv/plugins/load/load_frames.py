@@ -36,8 +36,7 @@ class FramesLoader(load.LoaderPlugin):
         # Command fails on unicode so we must force it to be strings
         filepath = str(filepath)
 
-        # node_name = "{}_{}".format(namespace, name) if namespace else name
-        namespace = namespace if namespace else context["asset"]["name"]
+        namespace = namespace if namespace else context["folder"]["name"]
 
         loaded_node = rv.commands.addSourceVerbose([filepath])
 
