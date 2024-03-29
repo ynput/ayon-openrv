@@ -30,13 +30,16 @@ class MovLoader(load.LoaderPlugin):
         filepath = str(filepath)
 
         # node_name = "{}_{}".format(namespace, name) if namespace else name
-        namespace = namespace if namespace else context["asset"]["name"]
+        namespace = namespace if namespace else context["folder"]["name"]
 
         loaded_node = rv.commands.addSourceVerbose([filepath])
 
         # update colorspace
-        self.set_representation_colorspace(loaded_node,
-                                           context["representation"])
+        try:
+            self.set_representation_colorspace(loaded_node,
+                                            context["representation"])
+        except Exception as e:
+            self.log.error(f"Failed to set colorspace: {e}")
 
         imprint_container(
             loaded_node,
