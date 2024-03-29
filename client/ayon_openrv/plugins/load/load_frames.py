@@ -41,8 +41,11 @@ class FramesLoader(load.LoaderPlugin):
         loaded_node = rv.commands.addSourceVerbose([filepath])
 
         # update colorspace
-        self.set_representation_colorspace(loaded_node,
+        try:
+            self.set_representation_colorspace(loaded_node,
                                            context["representation"])
+        except Exception as e:
+            self.log.error(f"Failed to set colorspace: {e}")
 
         imprint_container(
             loaded_node,
