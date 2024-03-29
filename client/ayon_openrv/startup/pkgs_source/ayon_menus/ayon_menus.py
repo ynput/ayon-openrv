@@ -6,8 +6,9 @@ import importlib
 import rv.qtutils
 from rv.rvtypes import MinorMode
 
+from ayon_api import get_representations
+
 from ayon_core.tools.utils import host_tools
-from ayon_core.client import get_representations
 from ayon_core.pipeline import (
     registered_host,
     install_host,
@@ -15,6 +16,7 @@ from ayon_core.pipeline import (
     load_container
 )
 from ayon_core.lib.transcoding import IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
+
 from ayon_openrv.api import OpenRVHost
 
 
