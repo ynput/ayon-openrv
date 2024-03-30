@@ -1,16 +1,26 @@
 import os
-from ayon_core.modules import AYONAddon
-from ayon_core.modules.interfaces import IHostAddon
+from ayon_core.addon import AYONAddon
+from ayon_core.addon.interfaces import IPluginPaths, IHostAddon
+
 
 OPENRV_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
-class OpenRVAddon(AYONAddon, IHostAddon):
+class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
     name = "openrv"
     host_name = "openrv"
 
     def initialize(self, module_settings):
         self.enabled = True
+
+    def get_plugin_paths(self):
+        """Implementation of IPluginPaths to get plugin paths."""
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        plugins_dir = os.path.join(current_dir, "plugins")
+
+        return {
+            "load": [os.path.join(plugins_dir, "trayloader")]
+        }
 
     def add_implementation_envs(self, env, app):
         """Modify environments to contain all required for implementation."""
