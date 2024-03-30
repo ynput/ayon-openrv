@@ -2,10 +2,8 @@ import copy
 
 import clique
 
-from ayon_core.pipeline import (
-    load,
-    get_representation_context
-)
+from ayon_core.pipeline import load
+
 from ayon_core.pipeline.load import get_representation_path_from_context
 from ayon_core.lib.transcoding import IMAGE_EXTENSIONS
 
@@ -58,7 +56,6 @@ class FramesLoader(load.LoaderPlugin):
     def update(self, container, context):
         node = container["node"]
         repr_id = context["representation"]["id"]
-        context = get_representation_context(context["project"]["name"], context["representation"])
         filepath = self._format_path(context)
         filepath = str(filepath)
 

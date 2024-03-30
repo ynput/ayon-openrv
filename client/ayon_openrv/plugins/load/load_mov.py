@@ -1,7 +1,4 @@
-from ayon_core.pipeline import (
-    load,
-    get_representation_context
-)
+from ayon_core.pipeline import load
 from ayon_openrv.api.pipeline import imprint_container
 from ayon_openrv.api.ocio import (
     set_group_ocio_active_state,
@@ -52,7 +49,6 @@ class MovLoader(load.LoaderPlugin):
     def update(self, container, context):
         node = container["node"]
         repr_id = context["representation"]["id"]
-        context = get_representation_context(context["project"]["name"], context["representation"])
         filepath = load.get_representation_path_from_context(context)
         filepath = str(filepath)
 
