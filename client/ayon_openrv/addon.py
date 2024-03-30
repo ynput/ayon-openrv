@@ -19,7 +19,7 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
         plugins_dir = os.path.join(current_dir, "plugins")
 
         return {
-            "load": [os.path.join(plugins_dir, "trayloader")]
+            "load": [os.path.join(plugins_dir, "actions")]
         }
 
     def add_implementation_envs(self, env, app):
