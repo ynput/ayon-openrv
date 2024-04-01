@@ -55,7 +55,7 @@ class FramesLoader(load.LoaderPlugin):
 
     def update(self, container, context):
         node = container["node"]
-        repr_id = context["representation"]["id"]
+        repr_id: str = context["representation"]["id"]
         filepath = self._format_path(context)
         filepath = str(filepath)
 
@@ -71,7 +71,7 @@ class FramesLoader(load.LoaderPlugin):
         rv.commands.setStringProperty(node + ".media.repName",
                                       ["repname"], True)
         rv.commands.setStringProperty(node + ".openpype.representation",
-                                      [str(repr_id)], True)
+                                      [repr_id], True)
 
     def remove(self, container):
         node = container["node"]

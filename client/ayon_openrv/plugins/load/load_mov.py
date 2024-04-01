@@ -48,7 +48,7 @@ class MovLoader(load.LoaderPlugin):
 
     def update(self, container, context):
         node = container["node"]
-        repr_id = context["representation"]["id"]
+        repr_id: str = context["representation"]["id"]
         filepath = load.get_representation_path_from_context(context)
         filepath = str(filepath)
 
@@ -64,7 +64,7 @@ class MovLoader(load.LoaderPlugin):
         rv.commands.setStringProperty(node + ".media.repName",
                                       ["repname"], True)
         rv.commands.setStringProperty(node + ".openpype.representation",
-                                      [str(repr_id)], True)
+                                      [repr_id], True)
 
     def remove(self, container):
         node = container["node"]
