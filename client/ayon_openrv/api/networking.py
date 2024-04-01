@@ -136,7 +136,7 @@ class RVConnector:
                 break
             
             # get single message
-            (resp_type, resp_data) = self.receive_message()
+            resp_type, resp_data = self.receive_message()
             print(f"received message: {resp_type}: {resp_data}")
 
             if resp_type == "MESSAGE":
