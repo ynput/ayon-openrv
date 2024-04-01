@@ -194,11 +194,9 @@ class LoadContainerHandler:
         # this enables us to use AYON manager for versioning
         if ayon_containers["FramesLoader"]:
             representation_ids = [i["representation"] for i in ayon_containers["FramesLoader"]]
-            project = ayon_containers["FramesLoader"][0]["project_name"]
             log.debug(f"{representation_ids = }")
-            load_data(project_name=project, dataset=representation_ids, loader_type="FramesLoader")
+            load_data(dataset=representation_ids, loader_type="FramesLoader")
         if ayon_containers["MovLoader"]:
             representation_ids = [i["representation"] for i in ayon_containers["MovLoader"]]
-            project = ayon_containers["MovLoader"][0]["project_name"]
             log.debug(f"{representation_ids = }")
-            load_data(project_name=project, dataset=representation_ids, loader_type="MovLoader")
+            load_data(dataset=representation_ids, loader_type="MovLoader")

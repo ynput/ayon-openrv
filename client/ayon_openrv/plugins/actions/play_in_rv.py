@@ -39,7 +39,6 @@ class PlayInRV(load.LoaderPlugin):
 
             # launch RV with context
             ctx = {
-                "project_name": context["project"]["name"],
                 "folder_path": folder_path,
                 "task_name": task["name"] or "generic",
             }
@@ -47,7 +46,6 @@ class PlayInRV(load.LoaderPlugin):
             openrv_app.launch(**ctx)
 
         _data = [{
-            "project_name": context["project"]["name"],
             "objectName": context["representation"]["context"]["representation"],
             "representation": context["representation"]["id"],
         }]

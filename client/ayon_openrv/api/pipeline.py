@@ -14,6 +14,7 @@ from ayon_api import get_representations
 
 from ayon_core.host import HostBase, ILoadHost, IWorkfileHost, IPublishHost
 from ayon_core.pipeline import (
+    get_current_project_name,
     discover_loader_plugins,
     load_container,
     register_loader_plugin_path,
@@ -255,10 +256,8 @@ def get_containers():
             yield container
 
 
-def load_data(project_name=None, dataset=None, loader_type : str = None):
-    #? why does the project name rretrieval not work anymore
-    # project_name = get_current_project_name()   # this returns None for some reason
-    # project_name = os.environ["AYON_PROJECT_NAME"]  # this env var is not present anymore :/
+def load_data(dataset=None, loader_type : str = None):
+    project_name = get_current_project_name()
     
     available_loaders = discover_loader_plugins(project_name)
     if not loader_type:
