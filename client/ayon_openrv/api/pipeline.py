@@ -5,7 +5,13 @@ from collections import OrderedDict
 
 import pyblish
 
-import rv
+try:
+    import rv
+except ImportError:
+    # NOTE: import fails because we're running outside RV
+    #       if we launch RV from TrayLoader 
+    #? how can i fix this
+    pass
 
 from ayon_api import get_representations
 
