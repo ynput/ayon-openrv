@@ -26,7 +26,7 @@ class PlayInRV(load.LoaderPlugin):
     color = "orange"
 
     def load(self, context, name, namespace, data):
-        rvcon = RVConnector(port=45129)
+        rvcon = RVConnector()
 
         if not rvcon.is_connected:
             app_manager = ApplicationManager()

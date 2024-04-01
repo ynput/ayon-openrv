@@ -20,10 +20,11 @@ log = Logger.get_logger(__name__)
 class RVConnector:
     addon_settings = get_addon_settings(OpenRVAddon.name, __version__)
 
-    def __init__(self, name="ayon-rv-connect", host="localhost", port=45124):
-        self.name = name
-        self.host = host
-        self.port = port
+    def __init__(self, host: str = None, name: str = None, port: int = None):
+        self.host = host or "localhost"
+        self.name = name or self.addon_settings["network"]["conn_name"]
+        self.port = port or self.addon_settings["network"]["conn_port"]
+
         self.is_connected = False
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
