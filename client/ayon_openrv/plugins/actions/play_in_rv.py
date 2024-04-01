@@ -2,10 +2,7 @@ import json
 from ayon_core.lib import ApplicationManager
 from ayon_core.pipeline import load
 
-try:
-    from ayon_openrv.api import RVConnector
-except ImportError:
-    raise Exception("Failed to import RVConnector from ayon_openrv.api. Is the OpenRV Addon enabled?")
+from ayon_openrv.api.networking import RVConnector
 
 
 class PlayInRV(load.LoaderPlugin):

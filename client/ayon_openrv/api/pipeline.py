@@ -5,10 +5,7 @@ from collections import OrderedDict
 
 import pyblish
 
-try:
-    import rv
-except ImportError:
-    pass
+import rv
 
 from ayon_api import get_representations
 
