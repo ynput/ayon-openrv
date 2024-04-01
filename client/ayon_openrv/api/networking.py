@@ -57,6 +57,7 @@ class RVConnector:
 
     def connect(self) -> None:
         """Connects to the RV server."""
+        print(f"Connecting with: {self.host = } {self.port = } {self.name = }")
         if self.is_connected:
             return
         self.__connect_socket()
@@ -164,8 +165,7 @@ class RVConnector:
             self.__send_initial_greeting()
             self.sock.sendall("PINGPONGCONTROL 1 0".encode("utf-8"))
             self.is_connected = True
-        except Exception as err:
-            print("Failed to establish connection. Is RV running?")
+        except Exception:
             self.is_connected = False
 
 
