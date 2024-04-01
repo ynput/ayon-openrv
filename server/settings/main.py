@@ -15,6 +15,10 @@ class NetworkSettings(BaseSettingsModel):
         title="Connection Port",
         default_factory=int,
     )
+    timeout: int = SettingsField(
+        title="Timeout in Seconds",
+        default_factory=int,
+    )
 
 class OpenRVSettings(BaseSettingsModel):
     enabled: bool = SettingsField(True)
@@ -31,5 +35,6 @@ DEFAULT_VALUES = {
     "network": {
         "conn_name": "ayon-rv-connect",
         "conn_port": 45124,
+        "timeout": 20,
     }
 }

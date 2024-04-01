@@ -1,6 +1,6 @@
 import json
 import socket
-from time import sleep
+from time import sleep, time
 
 from ayon_api import get_addon_settings
 
@@ -32,9 +32,11 @@ class RVConnector:
 
     def __enter__(self):
         """Enters the context manager."""
+        start = time()
         while not self.is_connected:
+            if time() - start > self.addon_settings["network"]["timeout"]:
+                raise Exception(f"Timeout reached. Tried with {self.host = } {self.port =  } {self.name = }")
             self.connect()
-            print("trying to connect...")
         return self
 
     def __exit__(self, *args):
