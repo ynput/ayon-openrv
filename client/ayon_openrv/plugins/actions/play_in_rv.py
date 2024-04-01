@@ -39,6 +39,7 @@ class PlayInRV(load.LoaderPlugin):
 
             # launch RV with context
             ctx = {
+                "project_name": context["project"]["name"],
                 "folder_path": folder_path,
                 "task_name": task["name"] or "generic",
             }
