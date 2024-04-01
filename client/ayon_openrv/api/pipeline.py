@@ -10,14 +10,20 @@ try:
 except ImportError:
     pass
 
+from ayon_api import get_representations
+
 from ayon_core.host import HostBase, ILoadHost, IWorkfileHost, IPublishHost
-from ayon_openrv import OPENRV_ROOT_DIR
 from ayon_core.pipeline import (
+    discover_loader_plugins,
+    load_container,
     register_loader_plugin_path,
     register_inventory_action_path,
     register_creator_plugin_path,
     AVALON_CONTAINER_ID,
 )
+
+from ayon_openrv import OPENRV_ROOT_DIR
+
 
 PLUGINS_DIR = os.path.join(OPENRV_ROOT_DIR, "plugins")
 PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")
@@ -247,3 +253,20 @@ def get_containers():
         container = parse_container(node)
         if container:
             yield container
+
+
+def load_data(project_name=None, dataset=None, loader_type : str = None):
+    #? why does the project name rretrieval not work anymore
+    # project_name = get_current_project_name()   # this returns None for some reason
+    # project_name = os.environ["AYON_PROJECT_NAME"]  # this env var is not present anymore :/
+    
+    available_loaders = discover_loader_plugins(project_name)
+    if not loader_type:
+        raise ValueError("Loader type not provided. Expected 'FramesLoader' or 'MovLoader'.")
+    Loader = next(loader for loader in available_loaders
+                  if loader.__name__ == loader_type)
+
+    representations = get_representations(project_name, representation_ids=dataset)
+
+    for representation in representations:
+        load_container(Loader, representation, project_name=project_name)

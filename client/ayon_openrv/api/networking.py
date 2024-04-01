@@ -1,5 +1,16 @@
+import json
 import socket
 from time import sleep
+
+from ayon_openrv.api.pipeline import load_data
+
+from ayon_core.lib.transcoding import (
+    IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
+)
+
+from ayon_core.lib import Logger
+log = Logger.get_logger(__name__)
+
 
 class RVConnector:
     def __init__(self, name="ayon-rv-connect", host="localhost", port=45124):
@@ -146,3 +157,48 @@ class RVConnector:
         except Exception as err:
             print("Failed to establish connection. Is RV running?")
             self.is_connected = False
+
+
+class LoadContainerHandler:
+    def __init__(self, event):
+        #? where is the implementation of event
+        if event.name() != "ayon_load_container":
+            raise Exception(
+                f"LoadContainerHandler called on wrong event. {event}"
+            )
+        self.event = event
+
+    def handle_event(self):
+        #! this currently drops support for loading unmanaged containers
+        # decode event contents
+        event_data: dict = json.loads(self.event.contents())
+
+        # find out which loader type to use for event representation
+        ayon_containers = {"FramesLoader": [], "MovLoader": []}
+        for node in event_data:
+            if not node.get("representation"):
+                raise Exception(f"event data has no representation. {event_data = }")
+
+            for ext in IMAGE_EXTENSIONS:
+                ext = ext.lstrip(".")
+                if ext in node["objectName"].lower():
+                    ayon_containers["FramesLoader"].append(node)
+                    break
+            for ext in VIDEO_EXTENSIONS:
+                ext = ext.lstrip(".")
+                if ext in node["objectName"].lower():
+                    ayon_containers["MovLoader"].append(node)
+                    break
+
+        # load the container with appropriate loader plugin
+        # this enables us to use AYON manager for versioning
+        if ayon_containers["FramesLoader"]:
+            representation_ids = [i["representation"] for i in ayon_containers["FramesLoader"]]
+            project = ayon_containers["FramesLoader"][0]["project_name"]
+            log.debug(f"{representation_ids = }")
+            load_data(project_name=project, dataset=representation_ids, loader_type="FramesLoader")
+        if ayon_containers["MovLoader"]:
+            representation_ids = [i["representation"] for i in ayon_containers["MovLoader"]]
+            project = ayon_containers["MovLoader"][0]["project_name"]
+            log.debug(f"{representation_ids = }")
+            load_data(project_name=project, dataset=representation_ids, loader_type="MovLoader")

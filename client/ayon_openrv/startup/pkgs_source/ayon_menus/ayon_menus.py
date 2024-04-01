@@ -18,6 +18,9 @@ from ayon_core.pipeline import (
 from ayon_core.lib.transcoding import IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
 
 from ayon_openrv.api import OpenRVHost
+from ayon_openrv.api.pipeline import load_data
+from ayon_openrv.api.networking import LoadContainerHandler
+
 
 
 from ayon_core.lib import Logger
@@ -112,67 +115,8 @@ def data_loader():
 
 
 def on_ayon_load_container(event):
-    # decode events contents
-    event_contents = json.loads(event.contents())
-    log.debug(f"{event_contents = }")
-
-    # separate generic nodes from ayon containers
-    generic_nodes = []
-    ayon_containers = {"FramesLoader": [], "MovLoader": []}
-    for node in event_contents:
-        if node.get("file"):
-            generic_nodes.append(node)
-            continue
-
-        if node.get("representation"):
-            for ext in IMAGE_EXTENSIONS:
-                ext = ext.lstrip(".")
-                if ext in node["objectName"].lower():
-                    ayon_containers["FramesLoader"].append(node)
-                    break
-            for ext in VIDEO_EXTENSIONS:
-                ext = ext.lstrip(".")
-                if ext in node["objectName"].lower():
-                    ayon_containers["MovLoader"].append(node)
-                    break
-
-    if ayon_containers["FramesLoader"]:
-        # load the container with appropriate loader plugin
-        # this enables us to use AYON manager for versioning
-        representation_ids = [i["representation"] for i in ayon_containers["FramesLoader"]]
-        project = ayon_containers["FramesLoader"][0]["project_name"]
-        log.debug(f"{representation_ids = }")
-        load_data(project_name=project, dataset=representation_ids, loader_type="FramesLoader")
-
-    if ayon_containers["MovLoader"]:
-        # load the container with appropriate loader plugin
-        # this enables us to use AYON manager for versioning
-        representation_ids = [i["representation"] for i in ayon_containers["MovLoader"]]
-        project = ayon_containers["MovLoader"][0]["project_name"]
-        log.debug(f"{representation_ids = }")
-        load_data(project_name=project, dataset=representation_ids, loader_type="MovLoader")
-    
-    if generic_nodes:
-        # load them "normally" via networking or rv.commands
-        source_paths = list([n["file"] for n in generic_nodes])
-        log.debug(f"{source_paths = }")
-        rv.commands.addSourceVerbose(source_paths)
-
-
-#! the kwarg loader_type might break other things
-def load_data(project_name=None, dataset=None, loader_type="FramesLoader"):
-    #? why does the project name rretrieval not work anymore
-    # project_name = get_current_project_name()   # this returns None for some reason
-    # project_name = os.environ["AYON_PROJECT_NAME"]  # this env var is not present anymore :/
-    
-    available_loaders = discover_loader_plugins(project_name)
-    Loader = next(loader for loader in available_loaders
-                  if loader.__name__ == loader_type)
-
-    representations = get_representations(project_name, representation_ids=dataset)
-
-    for representation in representations:
-        load_container(Loader, representation, project_name=project_name)
+    handler = LoadContainerHandler(event)
+    handler.handle_event()
 
 
 def createMode():
