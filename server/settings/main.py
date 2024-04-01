@@ -6,11 +6,21 @@ from ayon_server.settings import (
 from .imageio import ImageIOSettings
 
 
-class OpenRVSettings(BaseSettingsModel):
-    enabled: bool = SettingsField(True)
-    port: int = SettingsField(
+class NetworkSettings(BaseSettingsModel):
+    conn_name: str = SettingsField(
+        title="Connection Name",
+        default_factory=str,
+    )
+    conn_port: int = SettingsField(
         title="Connection Port",
         default_factory=int,
+    )
+
+class OpenRVSettings(BaseSettingsModel):
+    enabled: bool = SettingsField(True)
+    network: NetworkSettings = SettingsField(
+        title="Network Settings",
+        default_factory=NetworkSettings,
     )
     imageio: ImageIOSettings = SettingsField(
         default_factory=ImageIOSettings,
@@ -18,5 +28,8 @@ class OpenRVSettings(BaseSettingsModel):
     )
 
 DEFAULT_VALUES = {
-  "port": 45124
+    "network": {
+        "conn_name": "ayon-rv-connect",
+        "conn_port": 45124,
+    }
 }
