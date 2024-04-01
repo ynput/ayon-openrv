@@ -2,7 +2,12 @@ import json
 import socket
 from time import sleep
 
+from ayon_api import get_addon_settings
+
 from ayon_openrv.api.pipeline import load_data
+from ayon_openrv.version import __version__
+from ayon_openrv.addon import OpenRVAddon
+
 
 from ayon_core.lib.transcoding import (
     IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
@@ -13,6 +18,8 @@ log = Logger.get_logger(__name__)
 
 
 class RVConnector:
+    addon_settings = get_addon_settings(OpenRVAddon.name, __version__)
+
     def __init__(self, name="ayon-rv-connect", host="localhost", port=45124):
         self.name = name
         self.host = host
