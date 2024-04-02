@@ -259,16 +259,17 @@ def get_containers():
             yield container
 
 
-def load_data(dataset=None, loader_type : str = None):
+def load_representations(representation_ids: list[str], loader_type: str):
+    """Load representations into current app session."""
     project_name = get_current_project_name()
-    
+
     available_loaders = discover_loader_plugins(project_name)
     if not loader_type:
         raise ValueError("Loader type not provided. Expected 'FramesLoader' or 'MovLoader'.")
     Loader = next(loader for loader in available_loaders
                   if loader.__name__ == loader_type)
 
-    representations = get_representations(project_name, representation_ids=dataset)
+    representations = get_representations(project_name, representation_ids=representation_ids)
 
     for representation in representations:
         load_container(Loader, representation, project_name=project_name)

@@ -4,9 +4,9 @@ from time import sleep, time
 
 from ayon_api import get_addon_settings
 
-from ayon_openrv.api.pipeline import load_data
 from ayon_openrv.version import __version__
 from ayon_openrv.addon import OpenRVAddon
+from ayon_openrv.api.pipeline import load_representations
 
 
 from ayon_core.lib.transcoding import (
@@ -205,8 +205,8 @@ class LoadContainerHandler:
         if ayon_containers["FramesLoader"]:
             representation_ids = [i["representation"] for i in ayon_containers["FramesLoader"]]
             log.debug(f"{representation_ids = }")
-            load_data(dataset=representation_ids, loader_type="FramesLoader")
+            load_representations(representation_ids, loader_type="FramesLoader")
         if ayon_containers["MovLoader"]:
             representation_ids = [i["representation"] for i in ayon_containers["MovLoader"]]
             log.debug(f"{representation_ids = }")
-            load_data(dataset=representation_ids, loader_type="MovLoader")
+            load_representations(representation_ids, loader_type="MovLoader")

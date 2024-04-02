@@ -18,7 +18,7 @@ from ayon_core.pipeline import (
 from ayon_core.lib.transcoding import IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
 
 from ayon_openrv.api import OpenRVHost
-from ayon_openrv.api.pipeline import load_data
+from ayon_openrv.api.pipeline import load_representations
 from ayon_openrv.api.networking import LoadContainerHandler
 
 
@@ -109,7 +109,7 @@ def data_loader():
         with open(incoming_data_file, 'rb') as file:
             decoded_data = json.load(file)
         os.remove(incoming_data_file)
-        load_data(dataset=decoded_data["representations"])
+        load_representations(decoded_data["representations"])
     else:
         print("No data for auto-loader")
 
