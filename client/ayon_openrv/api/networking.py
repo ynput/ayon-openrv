@@ -87,7 +87,7 @@ class RVConnector:
     def close(self):
         if self.is_connected:
             self.send_message("DISCONNECT")
-            sleep(0.01) # wait for the message to be sent
+            sleep(0.1) # wait for the message to be sent
         
         self.sock.shutdown(socket.SHUT_RDWR)
         self.sock.close()
