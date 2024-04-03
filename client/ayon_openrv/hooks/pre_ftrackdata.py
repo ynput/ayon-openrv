@@ -1,7 +1,7 @@
 import json
 import tempfile
 
-from ayon_core.lib import PreLaunchHook
+from ayon_applications import PreLaunchHook
 
 
 class PreFtrackData(PreLaunchHook):
