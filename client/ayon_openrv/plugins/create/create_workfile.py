@@ -94,7 +94,7 @@ class OpenRVWorkfileCreator(AutoCreator):
             ))
 
             new_instance = CreatedInstance(
-                self.family, product_name, data, self
+                self.product_type, product_name, data, self
             )
             self._add_instance_to_context(new_instance)
 
