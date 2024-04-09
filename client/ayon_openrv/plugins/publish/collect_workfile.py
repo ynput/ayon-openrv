@@ -15,17 +15,17 @@ class CollectWorkfile(pyblish.api.InstancePlugin):
         """Inject the current working file"""
 
         host = registered_host()
-        current_file = host.get_current_workfile()
-        if not current_file:
-            self.log.error("No current filepath detected. "
-                           "Make sure to save your OpenRV session")
-            instance.data["publish"] = False
-            return
+        current_file = host.get_current_workfile() or ""
 
         folder, file = os.path.split(current_file)
         filename, ext = os.path.splitext(file)
 
         instance.context.data["currentFile"] = current_file
+
+        if not current_file:
+            self.log.error("No current filepath detected. "
+                           "Make sure to save your OpenRV session")
+            return
 
         instance.data["representations"] = [{
             "name": ext.lstrip("."),
