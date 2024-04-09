@@ -47,7 +47,7 @@ class OpenRVHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         return rv.commands.saveSession(filepath)
 
     def work_root(self, session):
-        work_dir = session.get("AVALON_WORKDIR")
+        work_dir = session.get("AYON_WORKDIR")
         scene_dir = session.get("AVALON_SCENEDIR")
         if scene_dir:
             return os.path.join(work_dir, scene_dir)
