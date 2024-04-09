@@ -6,7 +6,7 @@ from openpype.pipeline import publish, KnownPublishError
 class ExtractSaveScene(pyblish.api.ContextPlugin):
     """Save scene before extraction."""
 
-    order = publish.Extractor.order - 0.48
+    order = pyblish.api.ExtractorOrder - 0.48
     label = "Extract Save Scene"
     hosts = ["openrv"]
 
