@@ -27,9 +27,9 @@ class CollectWorkfile(pyblish.api.InstancePlugin):
 
         instance.context.data["currentFile"] = current_file
 
-        instance.data['representations'] = [{
-            'name': ext.lstrip("."),
-            'ext': ext.lstrip("."),
-            'files': file,
+        instance.data["representations"] = [{
+            "name": ext.lstrip("."),
+            "ext": ext.lstrip("."),
+            "files": file,
             "stagingDir": folder,
         }]
