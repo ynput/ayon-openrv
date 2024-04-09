@@ -6,7 +6,7 @@ from openpype.pipeline import registered_host
 class CollectWorkfile(pyblish.api.InstancePlugin):
     """Inject the current working file into context"""
 
-    order = pyblish.api.CollectorOrder - 0.01
+    order = pyblish.api.CollectorOrder - 0.49
     label = "OpenRV Session Workfile"
     hosts = ["openrv"]
     families = ["workfile"]
