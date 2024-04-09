@@ -15,7 +15,7 @@ except ModuleNotFoundError:
     from openpype.modules.python_console_interpreter.window import PythonInterpreterWidget  # noqa
 
 
-class AyonMenus(MinorMode):
+class AYONMenus(MinorMode):
 
     def __init__(self):
         MinorMode.__init__(self)
@@ -79,4 +79,4 @@ class AyonMenus(MinorMode):
 
 
 def createMode():
-    return AyonMenus()
+    return AYONMenus()
