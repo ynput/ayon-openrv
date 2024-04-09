@@ -12,7 +12,7 @@ from ayon_core.pipeline import (
 
 class OpenRVWorkfileCreator(AutoCreator):
     identifier = "workfile"
-    family = "workfile"
+    product_type = "workfile"
     label = "Workfile"
 
     default_variant = "Main"
@@ -29,9 +29,12 @@ class OpenRVWorkfileCreator(AutoCreator):
         if not data:
             return
 
+        product_name = data.get("productName")
+        if product_name is None:
+            product_name = data.get("subset")
         instance = CreatedInstance(
-            family=self.family,
-            subset_name=data["subset"],
+            product_type=self.product_type,
+            product_name=product_name,
             data=data,
             creator=self
         )
