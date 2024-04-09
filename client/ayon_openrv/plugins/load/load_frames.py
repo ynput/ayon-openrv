@@ -2,12 +2,12 @@ import copy
 
 import clique
 
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     load,
     get_representation_context
 )
-from openpype.pipeline.load import get_representation_path_from_context
-from openpype.lib.transcoding import IMAGE_EXTENSIONS
+from ayon_core.pipeline.load import get_representation_path_from_context
+from ayon_core.lib.transcoding import IMAGE_EXTENSIONS
 
 from ayon_openrv.api.pipeline import imprint_container
 from ayon_openrv.api.ocio import (

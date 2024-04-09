@@ -3,9 +3,9 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from openpype.lib import PreLaunchHook
 from ayon_openrv import OPENRV_ROOT_DIR
-from openpype.lib.execute import run_subprocess
+from ayon_applications import PreLaunchHook
+from ayon_core.lib.execute import run_subprocess
 
 
 class PreSetupOpenRV(PreLaunchHook):

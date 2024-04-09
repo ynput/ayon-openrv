@@ -1,6 +1,6 @@
 import pyblish.api
-from openpype.pipeline import registered_host
-from openpype.pipeline import publish, KnownPublishError
+
+from ayon_core.pipeline import registered_host, KnownPublishError
 
 
 class ExtractSaveScene(pyblish.api.ContextPlugin):
