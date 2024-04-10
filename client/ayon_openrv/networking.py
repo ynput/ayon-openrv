@@ -6,7 +6,13 @@ from ayon_api import get_addon_settings
 
 from ayon_openrv.version import __version__
 from ayon_openrv.addon import OpenRVAddon
-from ayon_openrv.api.pipeline import load_representations
+
+try:
+    from ayon_openrv.api.pipeline import load_representations
+except ImportError:
+    # NOTE: import fails because we're running outside RV
+    #       if we launch RV from TrayLoader.
+    pass
 
 
 from ayon_core.lib.transcoding import (
