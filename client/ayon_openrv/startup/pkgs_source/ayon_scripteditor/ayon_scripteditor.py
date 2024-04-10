@@ -11,7 +11,7 @@ from ayon_core.modules.python_console_interpreter.window import (
 )
 
 
-class AyonMenus(MinorMode):
+class AYONMenus(MinorMode):
 
     def __init__(self):
         MinorMode.__init__(self)
@@ -75,4 +75,4 @@ class AyonMenus(MinorMode):
 
 
 def createMode():
-    return AyonMenus()
+    return AYONMenus()
