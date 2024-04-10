@@ -19,7 +19,7 @@ from ayon_core.lib.transcoding import IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
 
 from ayon_openrv.api import OpenRVHost
 from ayon_openrv.api.pipeline import load_representations
-from ayon_openrv.api.networking import LoadContainerHandler
+from ayon_openrv.networking import LoadContainerHandler
 
 
 
