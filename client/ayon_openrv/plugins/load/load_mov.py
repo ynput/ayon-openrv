@@ -1,4 +1,4 @@
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     load,
     get_representation_context
 )
@@ -15,9 +15,9 @@ class MovLoader(load.LoaderPlugin):
     """Load mov into OpenRV"""
 
     label = "Load MOV"
-    families = ["*"]
-    representations = ["*"]
-    extensions = ["mov", "mp4"]
+    product_types = {"*"}
+    representations = {"*"}
+    extensions = {"mov", "mp4"}
     order = 0
 
     icon = "code-fork"
@@ -30,7 +30,7 @@ class MovLoader(load.LoaderPlugin):
         filepath = str(filepath)
 
         # node_name = "{}_{}".format(namespace, name) if namespace else name
-        namespace = namespace if namespace else context["asset"]["name"]
+        namespace = namespace if namespace else context["folder"]["name"]
 
         loaded_node = rv.commands.addSourceVerbose([filepath])
 
@@ -46,12 +46,13 @@ class MovLoader(load.LoaderPlugin):
             loader=self.__class__.__name__
         )
 
-    def update(self, container, representation):
+    def update(self, container, context):
         node = container["node"]
 
-        context = get_representation_context(representation)
         filepath = load.get_representation_path_from_context(context)
         filepath = str(filepath)
+
+        representation = context["representation"]
 
         # change path
         rv.commands.setSourceMedia(node, [filepath])
@@ -65,7 +66,7 @@ class MovLoader(load.LoaderPlugin):
         rv.commands.setStringProperty(node + ".media.repName",
                                       ["repname"], True)
         rv.commands.setStringProperty(node + ".openpype.representation",
-                                      [str(representation["_id"])], True)
+                                      [representation["id"]], True)
 
     def remove(self, container):
         node = container["node"]

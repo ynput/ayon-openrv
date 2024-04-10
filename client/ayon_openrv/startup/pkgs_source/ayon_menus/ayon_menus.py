@@ -6,13 +6,15 @@ import importlib
 import rv.qtutils
 from rv.rvtypes import MinorMode
 
-from openpype.tools.utils import host_tools
-from openpype.client import get_representations
-from openpype.pipeline import (
+from ayon_api import get_representations
+
+from ayon_core.tools.utils import host_tools
+from ayon_core.pipeline import (
     registered_host,
     install_host,
     discover_loader_plugins,
-    load_container
+    load_container,
+    get_current_project_name,
 )
 from ayon_openrv.api import OpenRVHost
 
@@ -35,7 +37,7 @@ import PyOpenColorIO  # noqa
 importlib.reload(PyOpenColorIO)
 
 
-def install_openpype_to_host():
+def install_host_in_ayon():
     host = OpenRVHost()
     install_host(host)
 
@@ -103,7 +105,7 @@ def data_loader():
 
 def load_data(dataset=None):
 
-    project_name = os.environ["AVALON_PROJECT"]
+    project_name = get_current_project_name()
     available_loaders = discover_loader_plugins(project_name)
     Loader = next(loader for loader in available_loaders
                   if loader.__name__ == "FramesLoader")
@@ -121,6 +123,6 @@ def createMode():
     # we only want to trigger the startup install when the host is not
     # registered yet.
     if not registered_host():
-        install_openpype_to_host()
+        install_host_in_ayon()
         data_loader()
     return AyonMenus()
