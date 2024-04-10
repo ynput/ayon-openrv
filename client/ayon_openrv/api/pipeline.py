@@ -190,7 +190,7 @@ def imprint_container(node, name, namespace, context, loader):
         ("name", str(name)),
         ("namespace", str(namespace)),
         ("loader", str(loader)),
-        ("representation", str(context["representation"]["_id"]))
+        ("representation", str(context["representation"]["id"]))
     ]
 
     # We use an OrderedDict to make sure the attributes
