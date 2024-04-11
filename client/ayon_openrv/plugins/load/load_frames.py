@@ -147,7 +147,7 @@ class FramesLoader(load.LoaderPlugin):
 
         context = copy.deepcopy(context)
         representation = context["representation"]
-        if not representation["attrib"].get("template"):
+        if not representation["data"].get("template"):
             # No template to find token locations for
             return get_representation_path_from_context(context)
 
