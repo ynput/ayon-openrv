@@ -3,6 +3,7 @@ import json
 import sys
 import importlib
 
+import rv.qtutils
 from rv.rvtypes import MinorMode
 
 from ayon_api import get_representations
@@ -15,17 +16,8 @@ from ayon_core.pipeline import (
     load_container,
     get_current_project_name,
 )
-from ayon_core.lib.transcoding import IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
-
 from ayon_openrv.api import OpenRVHost
-from ayon_openrv.api.pipeline import load_representations
 from ayon_openrv.networking import LoadContainerHandler
-
-
-
-from ayon_core.lib import Logger
-log = Logger.get_logger(__name__)
-
 
 # TODO (Critical) Remove this temporary hack to avoid clash with PyOpenColorIO
 #   that is contained within AYON's venv
@@ -56,7 +48,7 @@ class AYONMenus(MinorMode):
     def __init__(self):
         MinorMode.__init__(self)
         self.init(
-            name="",
+            name="py-ayon",
             globalBindings=None,
             overrideBindings=[
                 # event name, callback, description
@@ -74,10 +66,16 @@ class AYONMenus(MinorMode):
                     ("Library...", self.library, None, None),
                     ("_", None),  # separator
                     ("Work Files...", self.workfiles, None, None),
-                ]
-            )
-        ]
+                ])
+            ],
+            # initialization order
+            sortKey="source_setup",
+            ordering=15
         )
+
+    @property
+    def _parent(self):
+        return rv.qtutils.sessionWindow()
 
     def load(self, event):
         host_tools.show_loader(parent=self._parent, use_context=True)
@@ -104,7 +102,7 @@ def data_loader():
         with open(incoming_data_file, 'rb') as file:
             decoded_data = json.load(file)
         os.remove(incoming_data_file)
-        load_representations(decoded_data["representations"])
+        load_data(dataset=decoded_data["representations"])
     else:
         print("No data for auto-loader")
 
