@@ -6,8 +6,6 @@ from .settings import OpenRVSettings, DEFAULT_VALUES
 
 
 class OpenRVAddon(BaseServerAddon):
-    name = "openrv"
-    title = "OpenRV"
     settings_model: Type[OpenRVSettings] = OpenRVSettings
 
     async def get_default_settings(self):
