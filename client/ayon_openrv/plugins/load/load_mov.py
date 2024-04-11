@@ -35,11 +35,8 @@ class MovLoader(load.LoaderPlugin):
         loaded_node = rv.commands.addSourceVerbose([filepath])
 
         # update colorspace
-        try:
-            self.set_representation_colorspace(loaded_node,
-                                            context["representation"])
-        except Exception as e:
-            self.log.error(f"Failed to set colorspace: {e}")
+        self.set_representation_colorspace(loaded_node,
+                                           context["representation"])
 
         imprint_container(
             loaded_node,
