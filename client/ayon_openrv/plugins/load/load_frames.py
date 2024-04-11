@@ -147,7 +147,7 @@ class FramesLoader(load.LoaderPlugin):
 
         context = copy.deepcopy(context)
         representation = context["representation"]
-        if not representation["data"].get("template"):
+        if not representation["attrib"].get("template"):
             # No template to find token locations for
             return get_representation_path_from_context(context)
 
@@ -182,7 +182,7 @@ class FramesLoader(load.LoaderPlugin):
         return path
 
     def set_representation_colorspace(self, node, representation):
-        colorspace_data = representation.get("attrib", {}).get("colorspaceData")
+        colorspace_data = representation.get("data", {}).get("colorspaceData")
         if colorspace_data:
             colorspace = colorspace_data["colorspace"]
             # TODO: Confirm colorspace is valid in current OCIO config
