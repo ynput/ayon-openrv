@@ -4,7 +4,6 @@ import json
 from collections import OrderedDict
 
 import pyblish
-
 import rv
 
 from ayon_openrv import OPENRV_ROOT_DIR
