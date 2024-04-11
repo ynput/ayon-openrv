@@ -2,8 +2,10 @@ import copy
 
 import clique
 
-from ayon_core.pipeline import load
-
+from ayon_core.pipeline import (
+    load,
+    get_representation_context
+)
 from ayon_core.pipeline.load import get_representation_path_from_context
 from ayon_core.lib.transcoding import IMAGE_EXTENSIONS
 
@@ -20,9 +22,9 @@ class FramesLoader(load.LoaderPlugin):
     """Load frames into OpenRV"""
 
     label = "Load Frames"
-    product_types = ["*"]
-    representations = ["*"]
-    extensions = [ext.lstrip(".") for ext in IMAGE_EXTENSIONS]
+    product_types = {"*"}
+    representations = {"*"}
+    extensions = {ext.lstrip(".") for ext in IMAGE_EXTENSIONS}
     order = 0
 
     icon = "code-fork"
@@ -34,6 +36,7 @@ class FramesLoader(load.LoaderPlugin):
         # Command fails on unicode so we must force it to be strings
         filepath = str(filepath)
 
+        # node_name = "{}_{}".format(namespace, name) if namespace else name
         namespace = namespace if namespace else context["folder"]["name"]
 
         loaded_node = rv.commands.addSourceVerbose([filepath])
@@ -55,9 +58,10 @@ class FramesLoader(load.LoaderPlugin):
 
     def update(self, container, context):
         node = container["node"]
-        repr_id: str = context["representation"]["id"]
+
         filepath = self._format_path(context)
         filepath = str(filepath)
+        repre_entity = context["representation"]
 
         # change path
         rv.commands.setSourceMedia(node, [filepath])
@@ -71,7 +75,7 @@ class FramesLoader(load.LoaderPlugin):
         rv.commands.setStringProperty(node + ".media.repName",
                                       ["repname"], True)
         rv.commands.setStringProperty(node + ".openpype.representation",
-                                      [repr_id], True)
+                                      [repre_entity["id"]], True)
 
     def remove(self, container):
         node = container["node"]
@@ -94,49 +98,42 @@ class FramesLoader(load.LoaderPlugin):
             context (dict): Representation context.
 
         Returns:
-            tuple or None: (start, end) tuple if it is an image sequence
-                otherwise it returns None.
+            Union[tuple[int, int], None]: (start, end) tuple if it is an
+                image sequence otherwise it returns None.
 
         """
-        version = context.get("version", {})
-        representation = context.get("representation", {})
+        repre_entity = context["representation"]
 
         # Only images may be sequences, not videos
-        ext = representation.get("ext", representation.get("name"))
+        ext = repre_entity["context"].get("ext") or repre_entity["name"]
         if f".{ext}" not in IMAGE_EXTENSIONS:
             return
 
-        for doc in [representation, version]:
-            # Frame range can be set on version or representation.
-            # When set on representation it overrides version data.
-            data = doc.get("attrib", {})
-            start = data.get("frameStartHandle", data.get("frameStart", None))
-            end = data.get("frameEndHandle", data.get("frameEnd", None))
+        repre_attribs = repre_entity["attrib"]
+        # Frame range can be set on version or representation.
+        # When set on representation it overrides version data.
 
-            if start is None or end is None:
-                continue
-
-            if start != end:
-                return start, end
-            else:
-                # Single frame
-                return
+        repre_frame_start = repre_attribs.get("frameStart")
+        repre_frame_end = repre_attribs.get("frameEnd")
+        if repre_frame_start is not None and repre_frame_end is not None:
+            if repre_frame_start != repre_frame_end:
+                return repre_frame_start, repre_frame_end
+            # Single frame
+            return
 
         # Fallback for image sequence that does not have frame start and frame
         # end stored in the database.
         # TODO: Maybe rely on rv.commands.sequenceOfFile instead?
-        if "frame" in representation.get("context", {}):
+        if "frame" in repre_entity["context"]:
             # Guess the frame range from the files
-            files = representation.get("files", [])
+            files = repre_entity["files"]
             if len(files) > 1:
-                paths = [f["path"] for f in representation["files"]]
+                paths = [f["path"] for f in files]
                 collections, _remainder = clique.assemble(paths)
                 if collections:
                     collection = collections[0]
                     frames = list(collection.indexes)
                     return frames[0], frames[-1]
-
-        return
 
     def _format_path(self, context):
         """Format the path with correct frame range.
@@ -153,8 +150,7 @@ class FramesLoader(load.LoaderPlugin):
 
         context = copy.deepcopy(context)
         representation = context["representation"]
-        template = representation.get("attrib", {}).get("template")
-        if not template:
+        if not representation["attrib"].get("template"):
             # No template to find token locations for
             return get_representation_path_from_context(context)
 
@@ -179,7 +175,6 @@ class FramesLoader(load.LoaderPlugin):
                 has_tokens = True
 
         # Replace with our custom template that has the tokens set
-        representation["attrib"]["template"] = template
         path = get_representation_path_from_context(context)
 
         if has_tokens:

@@ -1,6 +1,7 @@
 import os
-from ayon_core.addon import AYONAddon
-from ayon_core.addon.interfaces import IPluginPaths, IHostAddon
+
+from ayon_core.addon import AYONAddon, IHostAddon
+from ayon_core.addon.interfaces import IPluginPaths
 
 
 OPENRV_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -26,7 +27,7 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
         """Modify environments to contain all required for implementation."""
         # Set default environments if are not set via settings
         defaults = {
-            "OPENPYPE_LOG_NO_COLORS": "True"
+            "AYON_LOG_NO_COLORS": "True"
         }
         for key, value in defaults.items():
             if not env.get(key):

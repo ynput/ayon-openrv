@@ -9,11 +9,13 @@ import rv
 
 from ayon_api import get_representations
 
+from ayon_openrv import OPENRV_ROOT_DIR
+
 from ayon_core.host import HostBase, ILoadHost, IWorkfileHost, IPublishHost
 from ayon_core.pipeline import (
-    get_current_project_name,
-    discover_loader_plugins,
     load_container,
+    discover_loader_plugins,
+    get_current_project_name,
     register_loader_plugin_path,
     register_inventory_action_path,
     register_creator_plugin_path,
@@ -55,7 +57,7 @@ class OpenRVHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         return rv.commands.saveSession(filepath)
 
     def work_root(self, session):
-        work_dir = session.get("AVALON_WORKDIR")
+        work_dir = session.get("AYON_WORKDIR")
         scene_dir = session.get("AVALON_SCENEDIR")
         if scene_dir:
             return os.path.join(work_dir, scene_dir)

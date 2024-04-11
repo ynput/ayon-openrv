@@ -1,7 +1,7 @@
 import logging
 
 import rv
-from ayon_core.pipeline.context_tools import get_current_project_asset
+from ayon_core.pipeline.context_tools import get_current_folder_entity
 
 log = logging.getLogger(__name__)
 
@@ -9,15 +9,15 @@ log = logging.getLogger(__name__)
 def reset_frame_range():
     """ Set timeline frame range.
     """
-    asset_doc = get_current_project_asset()
-    asset_name = asset_doc["name"]
-    asset_data = asset_doc["data"]
+    folder_entity = get_current_folder_entity(fields={"path", "attrib"})
+    folder_path = folder_entity["path"]
+    folder_attribs = folder_entity["attrib"]
 
-    frame_start = asset_data.get("frameStart")
-    frame_end = asset_data.get("frameEnd")
+    frame_start = folder_attribs.get("frameStart")
+    frame_end = folder_attribs.get("frameEnd")
 
     if frame_start is None or frame_end is None:
-        log.warning("No edit information found for {}".format(asset_name))
+        log.warning("No edit information found for {}".format(folder_path))
         return
 
     rv.commands.setFrameStart(frame_start)
@@ -28,7 +28,7 @@ def reset_frame_range():
 def set_session_fps():
     """ Set session fps.
     """
-    asset_doc = get_current_project_asset()
-    asset_data = asset_doc["data"]
-    fps = float(asset_data.get("fps", 25))
+    folder_entity = get_current_folder_entity(fields={"attrib"})
+
+    fps = float(folder_entity["attrib"].get("fps", 25))
     rv.commands.setFPS(fps)

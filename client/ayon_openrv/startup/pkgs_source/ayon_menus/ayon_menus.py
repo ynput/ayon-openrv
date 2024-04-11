@@ -3,7 +3,6 @@ import json
 import sys
 import importlib
 
-import rv.qtutils
 from rv.rvtypes import MinorMode
 
 from ayon_api import get_representations
@@ -13,7 +12,8 @@ from ayon_core.pipeline import (
     registered_host,
     install_host,
     discover_loader_plugins,
-    load_container
+    load_container,
+    get_current_project_name,
 )
 from ayon_core.lib.transcoding import IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
 
@@ -28,8 +28,8 @@ log = Logger.get_logger(__name__)
 
 
 # TODO (Critical) Remove this temporary hack to avoid clash with PyOpenColorIO
-#   that is contained within Ayon's venv
-# Ensure PyOpenColorIO is loaded from RV instead of from Ayon lib by
+#   that is contained within AYON's venv
+# Ensure PyOpenColorIO is loaded from RV instead of from AYON lib by
 # moving all rv related paths to start of sys.path so RV libs are imported
 # We consider the `/openrv` folder the root to  `/openrv/bin/rv` executable
 rv_root = os.path.normpath(os.path.dirname(os.path.dirname(sys.executable)))
@@ -46,34 +46,28 @@ import PyOpenColorIO  # noqa
 importlib.reload(PyOpenColorIO)
 
 
-def install_openpype_to_host():
+def install_host_in_ayon():
     host = OpenRVHost()
     install_host(host)
 
 
-class AyonMenus(MinorMode):
+class AYONMenus(MinorMode):
+
     def __init__(self):
         MinorMode.__init__(self)
         self.init(
             name="",
             globalBindings=None,
             overrideBindings=[
-                ("ayon_open_loader", self.load, "Opens AYON Loader."),
+                # event name, callback, description
                 ("ayon_load_container", on_ayon_load_container, "Loads an AYON representation into the session.")
             ],
-            menu=self.build_menu(),
-            sortKey=None,
-            ordering=0,
-        )
-
-    @property
-    def _parent(self):
-        return rv.qtutils.sessionWindow()
-
-    def build_menu(self):
-        return [
-            (
-                "Ayon", [
+            menu=[
+                # Menu name
+                # NOTE: If it already exists it will merge with existing
+                # and add submenus / menuitems to the existing one
+                ("AYON", [
+                    # Menuitem name, actionHook (event), key, stateHook
                     ("Load...", self.load, None, None),
                     ("Publish...", self.publish, None, None),
                     ("Manage...", self.scene_inventory, None, None),
@@ -83,6 +77,7 @@ class AyonMenus(MinorMode):
                 ]
             )
         ]
+        )
 
     def load(self, event):
         host_tools.show_loader(parent=self._parent, use_context=True)
@@ -119,12 +114,26 @@ def on_ayon_load_container(event):
     handler.handle_event()
 
 
+def load_data(dataset=None):
+
+    project_name = get_current_project_name()
+    available_loaders = discover_loader_plugins(project_name)
+    Loader = next(loader for loader in available_loaders
+                  if loader.__name__ == "FramesLoader")
+
+    representations = get_representations(project_name,
+                                          representation_ids=dataset)
+
+    for representation in representations:
+        load_container(Loader, representation)
+
+
 def createMode():
     # This function triggers for each RV session window being opened, for
     # example when using File > New Session this will trigger again. As such
     # we only want to trigger the startup install when the host is not
     # registered yet.
     if not registered_host():
-        install_openpype_to_host()
+        install_host_in_ayon()
         data_loader()
-    return AyonMenus()
+    return AYONMenus()

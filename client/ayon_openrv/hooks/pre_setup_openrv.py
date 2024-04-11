@@ -3,13 +3,9 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from ayon_applications import PreLaunchHook
-
 from ayon_openrv import OPENRV_ROOT_DIR
-
+from ayon_applications import PreLaunchHook
 from ayon_core.lib.execute import run_subprocess
-from ayon_core.pipeline.colorspace import get_imageio_config
-from ayon_core.pipeline.template_data import get_template_data_with_names
 
 
 class PreSetupOpenRV(PreLaunchHook):
@@ -20,7 +16,7 @@ class PreSetupOpenRV(PreLaunchHook):
         executable = self.application.find_executable()
 
         # We use the `rvpkg` executable next to the `rv` executable to
-        # install and opt-in to the Ayon plug-in packages
+        # install and opt-in to the AYON plug-in packages
         rvpkg = Path(os.path.dirname(str(executable))) / "rvpkg"
         packages_src_folder = Path(OPENRV_ROOT_DIR) / "startup" / "pkgs_source"
 
@@ -28,12 +24,12 @@ class PreSetupOpenRV(PreLaunchHook):
         #   RV_SUPPORT_PATH on each launch. This would create redundant temp
         #   files that remain on disk but it does allow us to ensure RV is
         #   now running with the correct version of the RV packages of this
-        #   current running Ayon version
+        #   current running AYON version
         op_support_path = Path(tempfile.mkdtemp(
             prefix="openpype_rv_support_path_"
         ))
 
-        # Write the Ayon RV package zips directly to the support path
+        # Write the AYON RV package zips directly to the support path
         # Packages/ folder then we don't need to `rvpkg -add` them afterwards
         packages_dest_folder = op_support_path / "Packages"
         packages_dest_folder.mkdir(exist_ok=True)
@@ -45,7 +41,7 @@ class PreSetupOpenRV(PreLaunchHook):
             self.log.debug(f"Writing: {package_dest}")
             shutil.make_archive(str(package_dest), "zip", str(package_src))
 
-        # Install and opt-in the Ayon RV packages
+        # Install and opt-in the AYON RV packages
         install_args = [rvpkg, "-only", op_support_path, "-install", "-force"]
         install_args.extend(packages)
         optin_args = [rvpkg, "-only", op_support_path, "-optin", "-force"]
