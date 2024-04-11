@@ -1,3 +1,4 @@
+import os
 import json
 import socket
 from time import sleep, time
@@ -95,7 +96,15 @@ class RVConnector:
     def close(self):
         if self.is_connected:
             self.send_message("DISCONNECT")
-            sleep(0.1) # wait for the message to be sent
+            timeout = os.environ.get("AYON_RV_SOCKET_CLOSE_TIMEOUT")
+
+            if not isinstance(timeout, int):
+                timeout = int(timeout)
+
+            if not timeout:
+                timeout = 100
+
+            sleep(timeout / 1000) # wait for the message to be sent
         
         self.sock.shutdown(socket.SHUT_RDWR)
         self.sock.close()
