@@ -18,10 +18,7 @@ class ImageIOConfigModel(BaseSettingsModel):
 
 
 class ImageIOSettings(BaseSettingsModel):
-    """Maya color management project settings.
-
-    Todo: What to do with color management preferences version?
-    """
+    """OpenRV color management project settings."""
 
     _isGroup: bool = True
     activate_host_color_management: bool = SettingsField(
