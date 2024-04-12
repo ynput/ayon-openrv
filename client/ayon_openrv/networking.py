@@ -44,7 +44,8 @@ class RVConnector:
         start = time()
         while not self.is_connected:
             if time() - start > self.addon_settings["network"]["timeout"]:
-                raise Exception(f"Timeout reached. Tried with {self.host = } {self.port =  } {self.name = }")
+                raise Exception(f"Timeout reached. Tried with {self.host = } "
+                                f"{self.port =  } {self.name = }")
             self.connect()
         return self
 
@@ -60,19 +61,20 @@ class RVConnector:
             if len(msg) > 0:
                 return True
         except Exception as err:
-            print(err)
+            log.error(err, exc_info=True)
 
         return False
 
     def connect(self) -> None:
         """Connects to the RV server."""
-        print(f"Connecting with: {self.host = } {self.port = } {self.name = }")
+        log.debug("Connecting with: "
+                  f"{self.host = } {self.port = } {self.name = }")
         if self.is_connected:
             return
         self.__connect_socket()
 
     def send_message(self, message):
-        print(f"send_message: {message}")
+        log.debug(f"send_message: {message}")
         if not self.is_connected:
             return
 
@@ -96,13 +98,10 @@ class RVConnector:
     def close(self):
         if self.is_connected:
             self.send_message("DISCONNECT")
-            timeout = os.environ.get("AYON_RV_SOCKET_CLOSE_TIMEOUT")
+            timeout = os.environ.get("AYON_RV_SOCKET_CLOSE_TIMEOUT", 100)
 
             if not isinstance(timeout, int):
                 timeout = int(timeout)
-
-            if not timeout:
-                timeout = 100
 
             sleep(timeout / 1000) # wait for the message to be sent
         
@@ -122,7 +121,7 @@ class RVConnector:
             msg_data = self.sock.recv(
                 len(msg_type)).decode("utf-8")
         except Exception as err:
-            print(err)
+            log.error(err, exc_info=True)
 
         return (msg_type, msg_data)
 
@@ -136,7 +135,7 @@ class RVConnector:
             self.is_connected = False
 
     def process_message(self, data):
-        print(f"process message: {data = }")
+        log.debug(f"process message: {data = }")
 
     def __process_events(self, process_return_only=False):
         while True:
@@ -154,7 +153,7 @@ class RVConnector:
             
             # get single message
             resp_type, resp_data = self.receive_message()
-            print(f"received message: {resp_type}: {resp_data}")
+            log.debug(f"received message: {resp_type}: {resp_data}")
 
             if resp_type == "MESSAGE":
                 if resp_data == "DISCONNECT":
@@ -204,7 +203,8 @@ class LoadContainerHandler:
         ayon_containers = {"FramesLoader": [], "MovLoader": []}
         for node in event_data:
             if not node.get("representation"):
-                raise Exception(f"event data has no representation. {event_data = }")
+                raise Exception("event data has no representation. "
+                                f"{event_data = }")
 
             for ext in IMAGE_EXTENSIONS:
                 ext = ext.lstrip(".")
@@ -220,11 +220,14 @@ class LoadContainerHandler:
         # load the container with appropriate loader plugin
         # this enables us to use AYON manager for versioning
         if ayon_containers["FramesLoader"]:
-            representation_ids = [i["representation"] for i in ayon_containers["FramesLoader"]]
+            representation_ids = [i["representation"]
+                                  for i in ayon_containers["FramesLoader"]]
             log.debug(f"{representation_ids = }")
-            load_representations(representation_ids, loader_type="FramesLoader")
+            load_representations(representation_ids,
+                                 loader_type="FramesLoader")
         if ayon_containers["MovLoader"]:
-            representation_ids = [i["representation"] for i in ayon_containers["MovLoader"]]
+            representation_ids = [i["representation"]
+                                  for i in ayon_containers["MovLoader"]]
             log.debug(f"{representation_ids = }")
             load_representations(representation_ids, loader_type="MovLoader")
 
@@ -235,11 +238,13 @@ def load_representations(representation_ids: list[str], loader_type: str):
 
     available_loaders = discover_loader_plugins(project_name)
     if not loader_type:
-        raise ValueError("Loader type not provided. Expected 'FramesLoader' or 'MovLoader'.")
+        raise ValueError("Loader type not provided. "
+                         "Expected 'FramesLoader' or 'MovLoader'.")
     Loader = next(loader for loader in available_loaders
                   if loader.__name__ == loader_type)
 
-    representations = get_representations(project_name, representation_ids=representation_ids)
+    representations = get_representations(project_name,
+        representation_ids=representation_ids)
 
     for representation in representations:
         load_container(Loader, representation, project_name=project_name)
