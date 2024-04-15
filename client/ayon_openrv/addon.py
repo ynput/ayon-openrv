@@ -1,7 +1,6 @@
 import os
 
-from ayon_core.addon import AYONAddon, IHostAddon
-from ayon_core.addon.interfaces import IPluginPaths
+from ayon_core.addon import AYONAddon, IHostAddon, IPluginPaths
 
 
 OPENRV_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
