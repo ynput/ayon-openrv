@@ -138,6 +138,7 @@ class RVConnector:
 
     def __process_events(self, process_return_only=False):
         while True:
+            sleep(0.01)
             while not self.message_available:
                 if not self.is_connected:
                     return ""
