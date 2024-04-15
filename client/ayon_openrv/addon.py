@@ -29,12 +29,12 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
         return [os.path.join(plugins_dir, "publish")]
 
     def get_load_plugin_paths(self, host_name):
-        plugins_dir = os.path.join(OPENRV_ROOT_DIR, "plugins")
+        loaders_dir = os.path.join(OPENRV_ROOT_DIR, "plugins", "load")
         if host_name != self.host_name:
             # for Tray Loader
-            return [os.path.join(plugins_dir, "universal_load")]
+            return [os.path.join(loaders_dir, "global")]
         # inside OpenRV only - import rv
-        return [os.path.join(plugins_dir, "load")]
+        return [os.path.join(loaders_dir, "openrv")]
 
     def add_implementation_envs(self, env, app):
         """Modify environments to contain all required for implementation."""
