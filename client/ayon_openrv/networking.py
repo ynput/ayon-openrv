@@ -150,7 +150,7 @@ class RVConnector:
 
             if not self.message_available:
                 break
-            
+
             # get single message
             resp_type, resp_data = self.receive_message()
             log.debug(f"received message: {resp_type}: {resp_data}")
