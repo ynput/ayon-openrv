@@ -10,8 +10,8 @@ from ayon_openrv.networking import RVConnector
 class PlayInRV(load.LoaderPlugin):
     """Open Image Sequence with system default"""
 
-    product_types = ["*"]
-    representations = ["*"]
+    product_types = {"*"}
+    representations = {"*"}
     extensions = {
         "cin", "dpx", "avi", "dv", "gif", "flv", "mkv", "mov", "mpg", "mpeg",
         "mp4", "m4v", "mxf", "iff", "z", "ifl", "jpeg", "jpg", "jfif", "lut",
