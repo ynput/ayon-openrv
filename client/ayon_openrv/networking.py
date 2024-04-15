@@ -17,12 +17,12 @@ from ayon_core.pipeline import (
 from ayon_openrv.version import __version__
 from ayon_openrv.addon import OpenRVAddon
 
-
 from ayon_core.lib.transcoding import (
     IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
 )
 
 from ayon_core.lib import Logger
+
 log = Logger.get_logger(__name__)
 
 
@@ -129,7 +129,6 @@ class RVConnector:
         greeting = f"{self.name} rvController"
         cmd = f"NEWGREETING {len(greeting)} {greeting}"
         try:
-
             self.sock.sendall(cmd.encode("utf-8"))
         except Exception:
             self.is_connected = False
@@ -165,15 +164,6 @@ class RVConnector:
 
             if resp_type == "PING":
                 self.sock.sendall("PONG 1 p".encode("utf-8"))
-            if resp_type == "PONG":
-                pass
-            if resp_type == "GREETING":
-                pass
-            if resp_type == "NEWGREETING":
-                pass
-            if resp_type == "NEWGREETING":
-                pass
-            # return msg
 
     def __connect_socket(self):
         try:
