@@ -3,6 +3,9 @@ import json
 from ayon_applications import ApplicationManager
 
 from ayon_core.pipeline import load
+from ayon_core.lib.transcoding import (
+    IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
+)
 
 from ayon_openrv.networking import RVConnector
 
@@ -13,10 +16,8 @@ class PlayInRV(load.LoaderPlugin):
     product_types = {"*"}
     representations = {"*"}
     extensions = {
-        "cin", "dpx", "avi", "dv", "gif", "flv", "mkv", "mov", "mpg", "mpeg",
-        "mp4", "m4v", "mxf", "iff", "z", "ifl", "jpeg", "jpg", "jfif", "lut",
-        "1dl", "exr", "pic", "png", "ppm", "pnm", "pgm", "pbm", "rla", "rpf",
-        "sgi", "rgba", "rgb", "bw", "tga", "tiff", "tif", "img", "h264",
+        ext.lstrip(".")
+        for ext in IMAGE_EXTENSIONS | VIDEO_EXTENSIONS
     }
 
     label = "Open in RV"
