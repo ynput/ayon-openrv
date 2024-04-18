@@ -31,9 +31,9 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
     def get_load_plugin_paths(self, host_name):
         loaders_dir = os.path.join(OPENRV_ROOT_DIR, "plugins", "load")
         if host_name != self.host_name:
-            # for Tray Loader
+            # Other hosts and tray browser
             return [os.path.join(loaders_dir, "global")]
-        # inside OpenRV only - import rv
+        # inside OpenRV
         return [os.path.join(loaders_dir, "openrv")]
 
     def add_implementation_envs(self, env, app):
