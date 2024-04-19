@@ -17,6 +17,7 @@ from ayon_core.pipeline import (
     get_current_project_name,
 )
 from ayon_openrv.api import OpenRVHost
+from ayon_openrv.networking import LoadContainerHandler
 
 # TODO (Critical) Remove this temporary hack to avoid clash with PyOpenColorIO
 #   that is contained within AYON's venv
@@ -49,7 +50,10 @@ class AYONMenus(MinorMode):
         self.init(
             name="py-ayon",
             globalBindings=None,
-            overrideBindings=None,
+            overrideBindings=[
+                # event name, callback, description
+                ("ayon_load_container", on_ayon_load_container, "Loads an AYON representation into the session.")
+            ],
             menu=[
                 # Menu name
                 # NOTE: If it already exists it will merge with existing
@@ -101,6 +105,11 @@ def data_loader():
         load_data(dataset=decoded_data["representations"])
     else:
         print("No data for auto-loader")
+
+
+def on_ayon_load_container(event):
+    handler = LoadContainerHandler(event)
+    handler.handle_event()
 
 
 def load_data(dataset=None):

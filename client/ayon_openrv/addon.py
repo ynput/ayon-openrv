@@ -1,16 +1,40 @@
 import os
 
-from ayon_core.addon import AYONAddon, IHostAddon
+from ayon_core.addon import AYONAddon, IHostAddon, IPluginPaths
+
 
 OPENRV_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
-class OpenRVAddon(AYONAddon, IHostAddon):
+class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
     name = "openrv"
     host_name = "openrv"
 
     def initialize(self, module_settings):
         self.enabled = True
+
+    def get_plugin_paths(self):
+        return {}
+
+    def get_create_plugin_paths(self, host_name):
+        if host_name != self.host_name:
+            return []
+        plugins_dir = os.path.join(OPENRV_ROOT_DIR, "plugins")
+        return [os.path.join(plugins_dir, "create")]
+
+    def get_publish_plugin_paths(self, host_name):
+        if host_name != self.host_name:
+            return []
+        plugins_dir = os.path.join(OPENRV_ROOT_DIR, "plugins")
+        return [os.path.join(plugins_dir, "publish")]
+
+    def get_load_plugin_paths(self, host_name):
+        loaders_dir = os.path.join(OPENRV_ROOT_DIR, "plugins", "load")
+        if host_name != self.host_name:
+            # Other hosts and tray browser
+            return [os.path.join(loaders_dir, "global")]
+        # inside OpenRV
+        return [os.path.join(loaders_dir, "openrv")]
 
     def add_implementation_envs(self, env, app):
         """Modify environments to contain all required for implementation."""
