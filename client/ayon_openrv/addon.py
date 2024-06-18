@@ -2,6 +2,7 @@ import os
 
 from ayon_core.addon import AYONAddon, IHostAddon, IPluginPaths
 
+from .version import __version__
 
 OPENRV_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -9,6 +10,7 @@ OPENRV_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
     name = "openrv"
     host_name = "openrv"
+    version = __version__
 
     def initialize(self, module_settings):
         self.enabled = True
