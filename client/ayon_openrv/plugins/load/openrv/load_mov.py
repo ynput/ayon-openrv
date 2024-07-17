@@ -1,7 +1,4 @@
-from ayon_core.pipeline import (
-    load,
-    get_representation_context
-)
+from ayon_core.pipeline import load
 from ayon_openrv.api.pipeline import imprint_container
 from ayon_openrv.api.ocio import (
     set_group_ocio_active_state,
