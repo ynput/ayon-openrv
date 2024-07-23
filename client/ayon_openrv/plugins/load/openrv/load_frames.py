@@ -2,10 +2,7 @@ import copy
 
 import clique
 
-from ayon_core.pipeline import (
-    load,
-    get_representation_context
-)
+from ayon_core.pipeline import load
 from ayon_core.pipeline.load import get_representation_path_from_context
 from ayon_core.lib.transcoding import IMAGE_EXTENSIONS
 
