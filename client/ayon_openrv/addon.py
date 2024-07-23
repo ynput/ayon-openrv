@@ -12,9 +12,6 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
     host_name = "openrv"
     version = __version__
 
-    def initialize(self, module_settings):
-        self.enabled = True
-
     def get_plugin_paths(self):
         return {}
 

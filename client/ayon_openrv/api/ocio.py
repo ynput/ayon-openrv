@@ -41,7 +41,8 @@ def set_group_ocio_colorspace(group, colorspace):
     This only works if OCIO is already 'active' for the group. T
 
     """
-    import ocio_source_setup    # noqa, RV OCIO package
+    # RV OCIO package
+    import ocio_source_setup  # noqa: F401
     node = get_group_ocio_file_node(group)
 
     if not node:
