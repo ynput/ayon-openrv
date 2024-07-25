@@ -24,16 +24,8 @@ class ImageIOSettings(BaseSettingsModel):
     activate_host_color_management: bool = SettingsField(
         True, title="Enable Color Management"
     )
-    ocio_config: ImageIOConfigModel = SettingsField(
-        default_factory=ImageIOConfigModel,
-        title="OCIO config"
-    )
 
 
 DEFAULT_IMAGEIO_SETTINGS = {
     "activate_host_color_management": True,
-    "ocio_config": {
-        "override_global_config": False,
-        "filepath": []
-    },
 }
