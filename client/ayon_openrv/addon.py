@@ -5,6 +5,10 @@ from ayon_core.addon import AYONAddon, IHostAddon, IPluginPaths
 from .version import __version__
 
 OPENRV_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+DEV_MODE = bool(os.getenv("AYON_USE_DEV"))
+if DEV_MODE:
+    print("DEV MODE IS ON")
+
 
 
 class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
@@ -48,6 +52,11 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
     def get_launch_hook_paths(self, app):
         if app.host_name != self.host_name:
             return []
+        if DEV_MODE:
+            # In development mode, use the current directory's hooks
+            return [
+                os.path.join(os.getcwd(), "client/ayon_openrv/hooks")
+            ]
         return [
             os.path.join(OPENRV_ROOT_DIR, "hooks")
         ]
