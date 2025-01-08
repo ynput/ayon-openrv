@@ -6,10 +6,6 @@ from .version import __version__
 
 OPENRV_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 DEV_MODE = bool(os.getenv("AYON_USE_DEV"))
-if DEV_MODE:
-    print("DEV MODE IS ON")
-
-
 
 class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
     name = "openrv"
