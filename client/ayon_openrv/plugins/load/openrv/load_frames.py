@@ -110,8 +110,6 @@ class FramesLoader(load.LoaderPlugin):
             return
 
         # Check version attributes first as they should have the correct frame range
-        frame_start = None
-        frame_end = None
         
         version_attribs = version_entity["attrib"]
         frame_start = version_attribs.get("frameStart")
