@@ -113,10 +113,9 @@ class FramesLoader(load.LoaderPlugin):
         frame_start = None
         frame_end = None
         
-        if version:
-            version_attribs = version["attrib"]
-            frame_start = version_attribs.get("frameStart")
-            frame_end = version_attribs.get("frameEnd")
+        version_attribs = version_entity["attrib"]
+        frame_start = version_attribs.get("frameStart")
+        frame_end = version_attribs.get("frameEnd")
 
         # If not in version attributes, check representation attributes
         if frame_start is None or frame_end is None:
