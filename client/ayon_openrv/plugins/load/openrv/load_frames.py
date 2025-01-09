@@ -101,7 +101,7 @@ class FramesLoader(load.LoaderPlugin):
 
         """
         repre_entity = context["representation"]
-        version = context.get("version")
+        version_entity = context["version"]
 
         # Only images may be sequences, not videos
         ext = repre_entity["context"].get("ext") or repre_entity["name"]
