@@ -143,7 +143,6 @@ class FramesLoader(load.LoaderPlugin):
                     collection = collections[0]
                     frames = list(collection.indexes)
                     return frames[0], frames[-1]
-            return
 
     def _format_path(self, context):
         """Format the path with correct frame range.
