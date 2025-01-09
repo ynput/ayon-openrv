@@ -5,7 +5,6 @@ from ayon_core.addon import AYONAddon, IHostAddon, IPluginPaths
 from .version import __version__
 
 OPENRV_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-DEV_MODE = bool(os.getenv("AYON_USE_DEV"))
 
 class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
     name = "openrv"
@@ -35,7 +34,7 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
         # inside OpenRV
         return [os.path.join(loaders_dir, "openrv")]
 
-    def add_implementation_envs(self, env, app):
+    def add_implementation_envs(self, env, _app):
         """Modify environments to contain all required for implementation."""
         # Set default environments if are not set via settings
         defaults = {
@@ -48,11 +47,6 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
     def get_launch_hook_paths(self, app):
         if app.host_name != self.host_name:
             return []
-        if DEV_MODE:
-            # In development mode, use the current directory's hooks
-            return [
-                os.path.join(os.getcwd(), "client/ayon_openrv/hooks")
-            ]
         return [
             os.path.join(OPENRV_ROOT_DIR, "hooks")
         ]
