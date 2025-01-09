@@ -5,7 +5,6 @@ import clique
 from ayon_core.pipeline import load
 from ayon_core.pipeline.load import get_representation_path_from_context
 from ayon_core.lib.transcoding import IMAGE_EXTENSIONS
-from ayon_core.lib import Logger
 
 from ayon_openrv.api.pipeline import imprint_container
 from ayon_openrv.api.ocio import (
@@ -14,9 +13,6 @@ from ayon_openrv.api.ocio import (
 )
 
 import rv
-
-
-log = Logger.get_logger(__name__)
 
 
 class FramesLoader(load.LoaderPlugin):
@@ -40,7 +36,7 @@ class FramesLoader(load.LoaderPlugin):
         namespace = namespace if namespace else context["folder"]["name"]
 
         loaded_node = rv.commands.addSourceVerbose([filepath])
-        log.debug(f"Loaded node: {loaded_node}")
+        self.log.debug(f"Loaded node: {loaded_node}")
 
         # update colorspace
         self.set_representation_colorspace(loaded_node,
@@ -106,7 +102,7 @@ class FramesLoader(load.LoaderPlugin):
         # Only images may be sequences, not videos
         ext = repre_entity["context"].get("ext") or repre_entity["name"]
         if f".{ext}" not in IMAGE_EXTENSIONS:
-            log.debug(f"Extension {ext} not in IMAGE_EXTENSIONS")
+            self.log.debug(f"Extension {ext} not in IMAGE_EXTENSIONS")
             return
 
         # Check version attributes first as they should have the correct frame range
@@ -123,7 +119,7 @@ class FramesLoader(load.LoaderPlugin):
 
         if frame_start is not None and frame_end is not None:
             if frame_start != frame_end:
-                log.debug(f"Using frame range: {frame_start}-{frame_end}")
+                self.log.debug(f"Using frame range: {frame_start}-{frame_end}")
                 return frame_start, frame_end
             return
 
@@ -157,7 +153,7 @@ class FramesLoader(load.LoaderPlugin):
         representation = context["representation"]
         if not representation["attrib"].get("template"):
             # No template to find token locations for
-            log.debug(f"No template found, using direct path")
+            self.log.debug(f"No template found, using direct path")
             return get_representation_path_from_context(context)
 
         def _placeholder(key):
@@ -173,7 +169,7 @@ class FramesLoader(load.LoaderPlugin):
         tokens = {
             "frame": f"{start}-{end}#",
         }
-        log.debug(f"Using tokens: {tokens}")
+        self.log.debug(f"Using tokens: {tokens}")
         has_tokens = False
         repre_context = representation["context"]
         for key, _token in tokens.items():
@@ -183,14 +179,14 @@ class FramesLoader(load.LoaderPlugin):
 
         # Replace with our custom template that has the tokens set
         path = get_representation_path_from_context(context)
-        log.debug(f"Initial path with placeholders: {path}")
+        self.log.debug(f"Initial path with placeholders: {path}")
 
         if has_tokens:
             for key, token in tokens.items():
                 if key in repre_context:
                     path = path.replace(_placeholder(key), token)
         
-        log.debug(f"Final formatted path: {path}")
+        self.log.debug(f"Final formatted path: {path}")
         return path
 
     def set_representation_colorspace(self, node, representation):
