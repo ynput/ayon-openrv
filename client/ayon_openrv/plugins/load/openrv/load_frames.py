@@ -154,8 +154,7 @@ class FramesLoader(load.LoaderPlugin):
         """
         sequence_range = self._get_sequence_range(context)
         if not sequence_range:
-            path = get_representation_path_from_context(context)
-            return path
+            return get_representation_path_from_context(context)
 
         context = copy.deepcopy(context)
         representation = context["representation"]
