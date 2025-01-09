@@ -160,9 +160,8 @@ class FramesLoader(load.LoaderPlugin):
         representation = context["representation"]
         if not representation["attrib"].get("template"):
             # No template to find token locations for
-            path = get_representation_path_from_context(context)
-            log.debug(f"No template found, using direct path: {path}")
-            return path
+            log.debug(f"No template found, using direct path")
+            return get_representation_path_from_context(context)
 
         def _placeholder(key):
             # Substitute with a long placeholder value so that potential
