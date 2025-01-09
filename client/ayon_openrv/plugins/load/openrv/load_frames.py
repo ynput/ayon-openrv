@@ -114,7 +114,7 @@ class FramesLoader(load.LoaderPlugin):
         frame_end = None
         
         if version:
-            version_attribs = version.get("attrib", {})
+            version_attribs = version["attrib"]
             frame_start = version_attribs.get("frameStart")
             frame_end = version_attribs.get("frameEnd")
 
