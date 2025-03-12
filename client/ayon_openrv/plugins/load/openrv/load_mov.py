@@ -22,11 +22,7 @@ class MovLoader(load.LoaderPlugin):
 
     def load(self, context, name=None, namespace=None, data=None):
 
-        filepath = self.fname
-        # Command fails on unicode so we must force it to be strings
-        filepath = str(filepath)
-
-        # node_name = "{}_{}".format(namespace, name) if namespace else name
+        filepath = self.filepath_from_context(context)
         namespace = namespace if namespace else context["folder"]["name"]
 
         loaded_node = rv.commands.addSourceVerbose([filepath])
@@ -44,26 +40,24 @@ class MovLoader(load.LoaderPlugin):
         )
 
     def update(self, container, context):
-        node = container["node"]
-
-        filepath = load.get_representation_path_from_context(context)
-        filepath = str(filepath)
-
-        representation = context["representation"]
+        filepath = self.filepath_from_context(context)
 
         # change path
+        node = container["node"]
         rv.commands.setSourceMedia(node, [filepath])
 
         # update colorspace
-        self.set_representation_colorspace(node, context["representation"])
+        representation = context["representation"]
+        self.set_representation_colorspace(node, representation)
 
         # update name
-        rv.commands.setStringProperty(node + ".media.name",
-                                      ["newname"], True)
-        rv.commands.setStringProperty(node + ".media.repName",
-                                      ["repname"], True)
-        rv.commands.setStringProperty(node + ".openpype.representation",
-                                      [representation["id"]], True)
+        rv.commands.setStringProperty(f"{node}.media.name", ["newname"], True)
+        rv.commands.setStringProperty(
+            f"{node}.media.repName", ["repname"], True
+        )
+        rv.commands.setStringProperty(
+            f"{node}.openpype.representation", [representation["id"]], True
+        )
 
     def remove(self, container):
         node = container["node"]
