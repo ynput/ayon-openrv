@@ -4,10 +4,8 @@ from rv.rvtypes import MinorMode
 
 from qtpy import QtCore
 
-# Future of 'python_console_interpreter' is unknown at this moment.
-#   It is possible that this import will cause crashes in future.
-from ayon_core.modules.python_console_interpreter.window import (
-    PythonInterpreterWidget
+from ayon_core.tools.console_interpreter.ui.window import (
+    ConsoleInterpreterWindow
 )
 
 
@@ -57,7 +55,7 @@ class AYONMenus(MinorMode):
                 self._widget.raise_()
                 return
 
-        widget = PythonInterpreterWidget(parent=self._parent)
+        widget = ConsoleInterpreterWindow(parent=self._parent)
         widget.setWindowTitle("Python Script Editor - OpenRV")
         widget.setWindowFlags(widget.windowFlags() |
                               QtCore.Qt.Dialog |
