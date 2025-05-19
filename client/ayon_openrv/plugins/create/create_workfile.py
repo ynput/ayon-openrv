@@ -20,7 +20,7 @@ class OpenRVWorkfileCreator(AutoCreator):
     create_allow_context_change = False
 
     data_store_node = "root"
-    data_store_prefix = "openpype_workfile."
+    data_store_prefix = "ayon_workfile."
 
     def collect_instances(self):
 
@@ -29,9 +29,7 @@ class OpenRVWorkfileCreator(AutoCreator):
         if not data:
             return
 
-        product_name = data.get("productName")
-        if product_name is None:
-            product_name = data.get("subset")
+        product_name = data["productName"]
         instance = CreatedInstance(
             product_type=self.product_type,
             product_name=product_name,

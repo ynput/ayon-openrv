@@ -56,7 +56,7 @@ class MovLoader(load.LoaderPlugin):
             f"{node}.media.repName", ["repname"], True
         )
         rv.commands.setStringProperty(
-            f"{node}.openpype.representation", [representation["id"]], True
+            f"{node}.ayon.representation", [representation["id"]], True
         )
 
     def remove(self, container):

@@ -196,7 +196,7 @@ class ReviewMenu(MinorMode):
         # Use namespace as loaded shot label
         namespace = ""
         if node is not None:
-            property_name = "{}.openpype.namespace".format(node)
+            property_name = "{}.ayon.namespace".format(node)
             if rv.commands.propertyExists(property_name):
                 namespace = rv.commands.getStringProperty(property_name)[0]
 

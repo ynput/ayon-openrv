@@ -25,13 +25,13 @@ class PreSetupOpenRV(PreLaunchHook):
         #   files that remain on disk but it does allow us to ensure RV is
         #   now running with the correct version of the RV packages of this
         #   current running AYON version
-        op_support_path = Path(tempfile.mkdtemp(
-            prefix="openpype_rv_support_path_"
+        ay_support_path = Path(tempfile.mkdtemp(
+            prefix="ayon_openrv_support_path_"
         ))
 
         # Write the AYON RV package zips directly to the support path
         # Packages/ folder then we don't need to `rvpkg -add` them afterwards
-        packages_dest_folder = op_support_path / "Packages"
+        packages_dest_folder = ay_support_path / "Packages"
         packages_dest_folder.mkdir(exist_ok=True)
         packages = ["comments", "ayon_menus", "ayon_scripteditor"]
         for package_name in packages:
@@ -42,19 +42,19 @@ class PreSetupOpenRV(PreLaunchHook):
             shutil.make_archive(str(package_dest), "zip", str(package_src))
 
         # Install and opt-in the AYON RV packages
-        install_args = [rvpkg, "-only", op_support_path, "-install", "-force"]
+        install_args = [rvpkg, "-only", ay_support_path, "-install", "-force"]
         install_args.extend(packages)
-        optin_args = [rvpkg, "-only", op_support_path, "-optin", "-force"]
+        optin_args = [rvpkg, "-only", ay_support_path, "-optin", "-force"]
         optin_args.extend(packages)
         run_subprocess(install_args, logger=self.log)
         run_subprocess(optin_args, logger=self.log)
 
-        self.log.debug(f"Adding RV_SUPPORT_PATH: {op_support_path}")
+        self.log.debug(f"Adding RV_SUPPORT_PATH: {ay_support_path}")
         support_path = self.launch_context.env.get("RV_SUPPORT_PATH")
         if support_path:
             support_path = os.pathsep.join([support_path,
-                                            str(op_support_path)])
+                                            str(ay_support_path)])
         else:
-            support_path = str(op_support_path)
+            support_path = str(ay_support_path)
         self.log.debug(f"Setting RV_SUPPORT_PATH: {support_path}")
         self.launch_context.env["RV_SUPPORT_PATH"] = support_path

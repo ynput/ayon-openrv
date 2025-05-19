@@ -31,7 +31,7 @@ class OpenRVHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 
     def __init__(self):
         super(OpenRVHost, self).__init__()
-        self._op_events = {}
+        self._ay_events = {}
 
     def install(self):
         pyblish.api.register_plugin_path(PUBLISH_PATH)

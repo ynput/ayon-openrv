@@ -96,7 +96,7 @@ class AYONMenus(MinorMode):
 
 def data_loader():
     incoming_data_file = os.environ.get(
-        "OPENPYPE_LOADER_REPRESENTATIONS", None
+        "AYON_LOADER_REPRESENTATIONS", None
     )
     if incoming_data_file:
         with open(incoming_data_file, 'rb') as file:

@@ -16,4 +16,4 @@ class PreFtrackData(PreLaunchHook):
             with tempfile.NamedTemporaryFile(mode="w+", delete=False) as file:
                 json.dump(payload, file)
 
-            self.launch_context.env["OPENPYPE_LOADER_REPRESENTATIONS"] = str(file.name)  # noqa
+            self.launch_context.env["AYON_LOADER_REPRESENTATIONS"] = str(file.name)  # noqa
