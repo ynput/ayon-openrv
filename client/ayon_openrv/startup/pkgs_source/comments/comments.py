@@ -208,7 +208,7 @@ class ReviewMenu(MinorMode):
     def setup_combo_status(self):
         # setup properties
         node = self.current_loaded_viewnode
-        att_prop = node + ".openpype_review.task_status"
+        att_prop = node + ".ayon_review.task_status"
         status = self.current_shot_status.currentText()
         rv.commands.setStringProperty(att_prop, [str(status)], True)
         self.current_shot_status.setCurrentText(status)
@@ -220,7 +220,7 @@ class ReviewMenu(MinorMode):
             self.current_shot_status.setCurrentIndex(0)
             return
 
-        att_prop = node + ".openpype_review.task_status"
+        att_prop = node + ".ayon_review.task_status"
         if not rv.commands.propertyExists(att_prop):
             status = "In Review"
             rv.commands.newProperty(att_prop, rv.commands.StringType, 1)
@@ -236,7 +236,7 @@ class ReviewMenu(MinorMode):
             return
 
         comment = self.current_shot_comment.toPlainText()
-        att_prop = node + ".openpype_review.task_comment"
+        att_prop = node + ".ayon_review.task_comment"
         rv.commands.newProperty(att_prop, rv.commands.StringType, 1)
         rv.commands.setStringProperty(att_prop, [str(comment)], True)
 
@@ -246,7 +246,7 @@ class ReviewMenu(MinorMode):
             self.current_shot_comment.setPlainText("")
             return
 
-        att_prop = node + ".openpype_review.task_comment"
+        att_prop = node + ".ayon_review.task_comment"
         if not rv.commands.propertyExists(att_prop):
             rv.commands.newProperty(att_prop, rv.commands.StringType, 1)
             rv.commands.setStringProperty(att_prop, [""], True)
@@ -257,8 +257,8 @@ class ReviewMenu(MinorMode):
     def clean_cmnt_status(self):
         attribs = []
         node = self.current_loaded_viewnode
-        att_prop_cmnt = node + ".openpype_review.task_comment"
-        att_prop_status = node + ".openpype_review.task_status"
+        att_prop_cmnt = node + ".ayon_review.task_comment"
+        att_prop_status = node + ".ayon_review.task_status"
         attribs.append(att_prop_cmnt)
         attribs.append(att_prop_status)
 

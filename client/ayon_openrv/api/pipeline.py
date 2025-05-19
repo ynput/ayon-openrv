@@ -181,7 +181,7 @@ def imprint_container(node, name, namespace, context, loader):
     """
 
     data = [
-        ("schema", "openpype:container-2.0"),
+        ("schema", "ayon:container-2.0"),
         ("id", str(AYON_CONTAINER_ID)),
         ("name", str(name)),
         ("namespace", str(namespace)),
