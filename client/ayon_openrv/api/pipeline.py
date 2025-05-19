@@ -13,7 +13,7 @@ from ayon_core.pipeline import (
     register_loader_plugin_path,
     register_inventory_action_path,
     register_creator_plugin_path,
-    AVALON_CONTAINER_ID,
+    AYON_CONTAINER_ID,
 )
 
 PLUGINS_DIR = os.path.join(OPENRV_ROOT_DIR, "plugins")
@@ -49,11 +49,7 @@ class OpenRVHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 
     def work_root(self, session):
         work_dir = session.get("AYON_WORKDIR")
-        scene_dir = session.get("AVALON_SCENEDIR")
-        if scene_dir:
-            return os.path.join(work_dir, scene_dir)
-        else:
-            return work_dir
+        return work_dir
 
     def get_current_workfile(self):
         filename = rv.commands.sessionFileName()
@@ -186,7 +182,7 @@ def imprint_container(node, name, namespace, context, loader):
 
     data = [
         ("schema", "openpype:container-2.0"),
-        ("id", str(AVALON_CONTAINER_ID)),
+        ("id", str(AYON_CONTAINER_ID)),
         ("name", str(name)),
         ("namespace", str(namespace)),
         ("loader", str(loader)),
