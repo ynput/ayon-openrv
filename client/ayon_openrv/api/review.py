@@ -3,6 +3,8 @@ import os
 
 import rv
 
+from .pipeline import AYON_ATTR_PREFIX
+
 
 def get_path_annotated_frame(frame=None, folder_name=None, folder_path=None):
     """Get path for annotations
@@ -34,19 +36,19 @@ def review_attributes(node=None):
 
 def get_review_attribute(node=None, attribute=None):
     # backward compatibility
-    attr = node + ".ayon" + "." + attribute
+    attr = f"{node}.{AYON_ATTR_PREFIX}{attribute}"
     attr_value = rv.commands.getStringProperty(attr)[0]
 
     # TODO: remove this later
     if attr_value == "":
-        attr = node + ".openpype" + "." + attribute
+        attr = f"{node}.openpype.{attribute}"
         attr_value = rv.commands.getStringProperty(attr)[0]
 
     return attr_value
 
 
 def write_review_attribute(node=None, attribute=None, att_value=None):
-    att_prop = node + ".ayon" + ".{}".format(attribute)
+    att_prop = f"{node}.{AYON_ATTR_PREFIX}{attribute}"
     if not rv.commands.propertyExists(att_prop):
         rv.commands.newProperty(att_prop, rv.commands.StringType, 1)
     rv.commands.setStringProperty(att_prop, [str(att_value)], True)

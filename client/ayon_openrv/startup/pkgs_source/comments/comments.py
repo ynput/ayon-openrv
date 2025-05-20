@@ -1,9 +1,13 @@
 # review code
-from PySide2 import QtCore, QtWidgets, QtGui
+import logging
+from collections import OrderedDict
+from pathlib import Path
 
-from rv.rvtypes import MinorMode
-import rv.qtutils
 import rv.commands
+import rv.qtutils
+from ayon_openrv.api import review
+from PySide2 import QtCore, QtGui, QtWidgets
+from rv.rvtypes import MinorMode
 
 
 def get_cycle_frame(frame=None, frames_lookup=None, direction="next"):
@@ -104,7 +108,7 @@ class ReviewMenu(MinorMode):
         self.review_main_layout_head.addWidget(self.current_shot_status)
         self.review_main_layout_head.addWidget(self.current_shot_comment)
 
-        self.get_view_image = QtWidgets.QPushButton("Get image")
+        self.get_view_image = QtWidgets.QPushButton("Export frame as image")
         self.review_main_layout_head.addWidget(self.get_view_image)
 
         self.remove_cmnt_status_btn = QtWidgets.QPushButton("Remove comment and status")  # noqa
@@ -148,6 +152,7 @@ class ReviewMenu(MinorMode):
                                         self.dockWidget)
 
             self.setup_listeners()
+            self.get_view_source()
         else:
             # Toggle visibility state
             self.dockWidget.toggleViewAction().trigger()
@@ -187,6 +192,7 @@ class ReviewMenu(MinorMode):
 
     def get_view_source(self):
         sources = rv.commands.sourcesAtFrame(rv.commands.frame())
+        logging.warning(f"sources: {sources}")
         self.current_loaded_viewnode = sources[0] if sources else None
         self.update_ui_attribs()
 
@@ -196,7 +202,8 @@ class ReviewMenu(MinorMode):
         # Use namespace as loaded shot label
         namespace = ""
         if node is not None:
-            property_name = "{}.ayon.namespace".format(node)
+            property_name = f"{node}.{review.AYON_ATTR_PREFIX}namespace"
+            logging.warning(f"property_name: {property_name}")
             if rv.commands.propertyExists(property_name):
                 namespace = rv.commands.getStringProperty(property_name)[0]
 
@@ -208,7 +215,7 @@ class ReviewMenu(MinorMode):
     def setup_combo_status(self):
         # setup properties
         node = self.current_loaded_viewnode
-        att_prop = node + ".ayon_review.task_status"
+        att_prop = f"{node}.{review.AYON_ATTR_PREFIX}task_status"
         status = self.current_shot_status.currentText()
         rv.commands.setStringProperty(att_prop, [str(status)], True)
         self.current_shot_status.setCurrentText(status)
@@ -220,7 +227,7 @@ class ReviewMenu(MinorMode):
             self.current_shot_status.setCurrentIndex(0)
             return
 
-        att_prop = node + ".ayon_review.task_status"
+        att_prop = f"{node}.{review.AYON_ATTR_PREFIX}task_status"
         if not rv.commands.propertyExists(att_prop):
             status = "In Review"
             rv.commands.newProperty(att_prop, rv.commands.StringType, 1)
@@ -236,7 +243,7 @@ class ReviewMenu(MinorMode):
             return
 
         comment = self.current_shot_comment.toPlainText()
-        att_prop = node + ".ayon_review.task_comment"
+        att_prop = f"{node}.{review.AYON_ATTR_PREFIX}task_comment"
         rv.commands.newProperty(att_prop, rv.commands.StringType, 1)
         rv.commands.setStringProperty(att_prop, [str(comment)], True)
 
@@ -246,7 +253,7 @@ class ReviewMenu(MinorMode):
             self.current_shot_comment.setPlainText("")
             return
 
-        att_prop = node + ".ayon_review.task_comment"
+        att_prop = f"{node}.{review.AYON_ATTR_PREFIX}task_comment"
         if not rv.commands.propertyExists(att_prop):
             rv.commands.newProperty(att_prop, rv.commands.StringType, 1)
             rv.commands.setStringProperty(att_prop, [""], True)
@@ -255,14 +262,14 @@ class ReviewMenu(MinorMode):
             self.current_shot_comment.setPlainText(status)
 
     def clean_cmnt_status(self):
-        attribs = []
         node = self.current_loaded_viewnode
-        att_prop_cmnt = node + ".ayon_review.task_comment"
-        att_prop_status = node + ".ayon_review.task_status"
-        attribs.append(att_prop_cmnt)
-        attribs.append(att_prop_status)
+        logging.warning(f"node: {node}")
 
-        for prop in attribs:
+        for prop in [
+            f"{node}.{review.AYON_ATTR_PREFIX}task_comment",
+            f"{node}.{review.AYON_ATTR_PREFIX}task_status",
+        ]:
+            logging.warning(f"prop: {prop}")
             if not rv.commands.propertyExists(prop):
                 rv.commands.newProperty(prop, rv.commands.StringType, 1)
             rv.commands.setStringProperty(prop, [""], True)
@@ -271,13 +278,21 @@ class ReviewMenu(MinorMode):
         self.current_shot_comment.setPlainText("")
 
     def get_gui_image(self, filename=None):
+        current_attributes = OrderedDict(rv.commands.getCurrentAttributes())
+        frame_number = rv.commands.frame()
+        current_frame = current_attributes.get("SourceFrame", frame_number)
+        current_file_path = Path(current_attributes.get("File", "Image.png"))
+
+        current_frame_name = current_file_path.stem
+        if current_frame not in current_frame_name:
+            current_frame_name = f"{current_frame_name}.{current_frame}"
 
         if not filename:
             # Allow user to pick filename
             filename, _ = QtWidgets.QFileDialog.getSaveFileName(
                 self.customDockWidget,
                 "Save image",
-                "image.png",
+                f"annotate_{current_frame_name}.png",
                 "Images (*.png *.jpg *.jpeg *.exr)"
             )
             if not filename:
