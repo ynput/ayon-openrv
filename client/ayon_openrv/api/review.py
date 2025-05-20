@@ -9,7 +9,7 @@ def get_path_annotated_frame(frame=None, folder_name=None, folder_path=None):
     """
     # TODO: This should be less hardcoded
     filename = os.path.normpath(
-        "{}/pyblish/exports/annotated_frames/annotate_{}_{}.jpg".format(
+        "{}/ayon/exports/annotated_frames/annotate_{}_{}.jpg".format(
             str(folder_path),
             str(folder_name),
             str(frame)
