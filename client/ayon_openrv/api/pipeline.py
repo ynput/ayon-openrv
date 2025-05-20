@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
 import json
-from collections import OrderedDict
 
 import pyblish
 import rv
