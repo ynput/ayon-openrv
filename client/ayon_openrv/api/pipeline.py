@@ -231,6 +231,13 @@ def get_container_nodes():
         prop = f"{node}.{AYON_ATTR_PREFIX}schema"
         if rv.commands.propertyExists(prop):
             container_nodes.append(node)
+        else:
+            # lets try backward compatibility
+            # TODO: remove later
+            prop = f"{node}.openpype.schema"
+            if rv.commands.propertyExists(prop):
+                container_nodes.append(node)
+
     return container_nodes
 
 
