@@ -34,12 +34,12 @@ def review_attributes(node=None):
 
 def get_review_attribute(node=None, attribute=None):
     # backward compatibility
-    attr = node + ".openpype" + "." + attribute
+    attr = node + ".ayon" + "." + attribute
     attr_value = rv.commands.getStringProperty(attr)[0]
 
     # TODO: remove this later
     if attr_value == "":
-        attr = node + ".ayon" + "." + attribute
+        attr = node + ".openpype" + "." + attribute
         attr_value = rv.commands.getStringProperty(attr)[0]
 
     return attr_value

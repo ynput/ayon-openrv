@@ -180,20 +180,16 @@ def imprint_container(node, name, namespace, context, loader):
 
     """
 
-    data = [
-        ("schema", "ayon:container-2.0"),
-        ("id", str(AYON_CONTAINER_ID)),
-        ("name", str(name)),
-        ("namespace", str(namespace)),
-        ("loader", str(loader)),
-        ("representation", str(context["representation"]["id"]))
-    ]
+    data = {
+        "schema": "ayon:container-2.0",
+        "id": str(AYON_CONTAINER_ID),
+        "name": str(name),
+        "namespace": str(namespace),
+        "loader": str(loader),
+        "representation": str(context["representation"]["id"])
+    }
 
-    # We use an OrderedDict to make sure the attributes
-    # are always created in the same order. This is solely
-    # to make debugging easier when reading the values in
-    # the attribute editor.
-    imprint(node, OrderedDict(data), prefix=AYON_ATTR_PREFIX)
+    imprint(node, data, prefix=AYON_ATTR_PREFIX)
 
 
 def parse_container(node):
@@ -210,7 +206,11 @@ def parse_container(node):
     for key in required:
         prop = f"{node}.{AYON_ATTR_PREFIX}{key}"
         if not rv.commands.propertyExists(prop):
-            return
+            # lets try backward compatibility
+            # TODO: remove later
+            prop = f"{node}.openpype.{key}"
+            if not rv.commands.propertyExists(prop):
+                return
 
         value = rv.commands.getStringProperty(prop)[0]
         data[key] = value
