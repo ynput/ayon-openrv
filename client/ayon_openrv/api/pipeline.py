@@ -75,7 +75,13 @@ class OpenRVHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         imprint("root", data, prefix=AYON_ATTR_PREFIX)
 
     def get_context_data(self):
-        return read("root", prefix=AYON_ATTR_PREFIX)
+        context_data = read("root", prefix=AYON_ATTR_PREFIX)
+        if not context_data:
+            # lets try backward compatibility
+            # TODO: remove later
+            context_data = read("root", prefix="openpype.")
+
+        return context_data
 
 
 def imprint(node, data, prefix=None):
