@@ -76,8 +76,7 @@ class OpenRVHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
     def get_context_data(self):
         context_data = read("root", prefix=AYON_ATTR_PREFIX)
         if not context_data:
-            # lets try backward compatibility
-            # TODO: remove later
+            # backward compatibility
             context_data = read("root", prefix="openpype.")
 
         return context_data
@@ -211,8 +210,7 @@ def parse_container(node):
     for key in required:
         prop = f"{node}.{AYON_ATTR_PREFIX}{key}"
         if not rv.commands.propertyExists(prop):
-            # lets try backward compatibility
-            # TODO: remove later
+            # backward compatibility
             prop = f"{node}.openpype.{key}"
             if not rv.commands.propertyExists(prop):
                 return
@@ -237,8 +235,7 @@ def get_container_nodes():
         if rv.commands.propertyExists(prop):
             container_nodes.append(node)
         else:
-            # lets try backward compatibility
-            # TODO: remove later
+            # backward compatibility
             prop = f"{node}.openpype.schema"
             if rv.commands.propertyExists(prop):
                 container_nodes.append(node)

@@ -37,7 +37,7 @@ def get_review_attribute(node=None, attribute=None):
     attr = node + ".ayon" + "." + attribute
     attr_value = rv.commands.getStringProperty(attr)[0]
 
-    # TODO: remove this later
+    # backward compatibility
     if attr_value == "":
         attr = node + ".openpype" + "." + attribute
         attr_value = rv.commands.getStringProperty(attr)[0]
