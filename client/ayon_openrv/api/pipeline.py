@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
 import json
-from collections import OrderedDict
 
 import pyblish
 import rv
@@ -13,7 +12,7 @@ from ayon_core.pipeline import (
     register_loader_plugin_path,
     register_inventory_action_path,
     register_creator_plugin_path,
-    AVALON_CONTAINER_ID,
+    AYON_CONTAINER_ID,
 )
 
 PLUGINS_DIR = os.path.join(OPENRV_ROOT_DIR, "plugins")
@@ -22,7 +21,7 @@ LOAD_PATH = os.path.join(PLUGINS_DIR, "load")
 CREATE_PATH = os.path.join(PLUGINS_DIR, "create")
 INVENTORY_PATH = os.path.join(PLUGINS_DIR, "inventory")
 
-OPENPYPE_ATTR_PREFIX = "openpype."
+AYON_ATTR_PREFIX = "ayon."
 JSON_PREFIX = "JSON:::"
 
 
@@ -31,7 +30,7 @@ class OpenRVHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 
     def __init__(self):
         super(OpenRVHost, self).__init__()
-        self._op_events = {}
+        self._ay_events = {}
 
     def install(self):
         pyblish.api.register_plugin_path(PUBLISH_PATH)
@@ -49,11 +48,7 @@ class OpenRVHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 
     def work_root(self, session):
         work_dir = session.get("AYON_WORKDIR")
-        scene_dir = session.get("AVALON_SCENEDIR")
-        if scene_dir:
-            return os.path.join(work_dir, scene_dir)
-        else:
-            return work_dir
+        return work_dir
 
     def get_current_workfile(self):
         filename = rv.commands.sessionFileName()
@@ -76,10 +71,15 @@ class OpenRVHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
             yield container
 
     def update_context_data(self, data, changes):
-        imprint("root", data, prefix=OPENPYPE_ATTR_PREFIX)
+        imprint("root", data, prefix=AYON_ATTR_PREFIX)
 
     def get_context_data(self):
-        return read("root", prefix=OPENPYPE_ATTR_PREFIX)
+        context_data = read("root", prefix=AYON_ATTR_PREFIX)
+        if not context_data:
+            # backward compatibility
+            context_data = read("root", prefix="openpype.")
+
+        return context_data
 
 
 def imprint(node, data, prefix=None):
@@ -184,20 +184,16 @@ def imprint_container(node, name, namespace, context, loader):
 
     """
 
-    data = [
-        ("schema", "openpype:container-2.0"),
-        ("id", str(AVALON_CONTAINER_ID)),
-        ("name", str(name)),
-        ("namespace", str(namespace)),
-        ("loader", str(loader)),
-        ("representation", str(context["representation"]["id"]))
-    ]
+    data = {
+        "schema": "ayon:container-2.0",
+        "id": str(AYON_CONTAINER_ID),
+        "name": str(name),
+        "namespace": str(namespace),
+        "loader": str(loader),
+        "representation": str(context["representation"]["id"])
+    }
 
-    # We use an OrderedDict to make sure the attributes
-    # are always created in the same order. This is solely
-    # to make debugging easier when reading the values in
-    # the attribute editor.
-    imprint(node, OrderedDict(data), prefix=OPENPYPE_ATTR_PREFIX)
+    imprint(node, data, prefix=AYON_ATTR_PREFIX)
 
 
 def parse_container(node):
@@ -212,9 +208,12 @@ def parse_container(node):
 
     data = {}
     for key in required:
-        prop = f"{node}.{OPENPYPE_ATTR_PREFIX}{key}"
+        prop = f"{node}.{AYON_ATTR_PREFIX}{key}"
         if not rv.commands.propertyExists(prop):
-            return
+            # backward compatibility
+            prop = f"{node}.openpype.{key}"
+            if not rv.commands.propertyExists(prop):
+                return
 
         value = rv.commands.getStringProperty(prop)[0]
         data[key] = value
@@ -232,9 +231,15 @@ def get_container_nodes():
     """Return a list of node names that are marked as loaded container."""
     container_nodes = []
     for node in rv.commands.nodes():
-        prop = f"{node}.{OPENPYPE_ATTR_PREFIX}schema"
+        prop = f"{node}.{AYON_ATTR_PREFIX}schema"
         if rv.commands.propertyExists(prop):
             container_nodes.append(node)
+        else:
+            # backward compatibility
+            prop = f"{node}.openpype.schema"
+            if rv.commands.propertyExists(prop):
+                container_nodes.append(node)
+
     return container_nodes
 
 

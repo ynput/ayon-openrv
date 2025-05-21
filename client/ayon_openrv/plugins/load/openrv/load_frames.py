@@ -71,7 +71,7 @@ class FramesLoader(load.LoaderPlugin):
         rv.commands.setStringProperty(
             f"{node}.media.repName", ["repname"], allowResize=True)
         rv.commands.setStringProperty(
-            f"{node}.openpype.representation",
+            f"{node}.ayon.representation",
             [repre_entity["id"]], allowResize=True
         )
 

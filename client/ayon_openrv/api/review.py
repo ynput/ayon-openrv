@@ -4,14 +4,14 @@ import os
 import rv
 
 
-def get_path_annotated_frame(frame=None, asset=None, asset_folder=None):
+def get_path_annotated_frame(frame=None, folder_name=None, folder_path=None):
     """Get path for annotations
     """
     # TODO: This should be less hardcoded
     filename = os.path.normpath(
-        "{}/pyblish/exports/annotated_frames/annotate_{}_{}.jpg".format(
-            str(asset_folder),
-            str(asset),
+        "{}/ayon/exports/annotated_frames/annotate_{}_{}.jpg".format(
+            str(folder_path),
+            str(folder_name),
             str(frame)
         )
     )
@@ -27,18 +27,26 @@ def extract_annotated_frame(filepath=None):
 
 def review_attributes(node=None):
     # TODO: Implement
-    # prop_status = node + ".openpype" + ".review_status"
-    # prop_comment = node + ".openpype" + ".review_comment"
+    # prop_status = node + ".ayon" + ".review_status"
+    # prop_comment = node + ".ayon" + ".review_comment"
     pass
 
 
 def get_review_attribute(node=None, attribute=None):
-    attr = node + ".openpype" + "." + attribute
-    return rv.commands.getStringProperty(attr)[0]
+    # backward compatibility
+    attr = node + ".ayon" + "." + attribute
+    attr_value = rv.commands.getStringProperty(attr)[0]
+
+    # backward compatibility
+    if attr_value == "":
+        attr = node + ".openpype" + "." + attribute
+        attr_value = rv.commands.getStringProperty(attr)[0]
+
+    return attr_value
 
 
 def write_review_attribute(node=None, attribute=None, att_value=None):
-    att_prop = node + ".openpype" + ".{}".format(attribute)
+    att_prop = node + ".ayon" + ".{}".format(attribute)
     if not rv.commands.propertyExists(att_prop):
         rv.commands.newProperty(att_prop, rv.commands.StringType, 1)
     rv.commands.setStringProperty(att_prop, [str(att_value)], True)
