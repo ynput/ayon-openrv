@@ -61,14 +61,23 @@ class ReviewMenu(MinorMode):
         self.log = logging.getLogger("ReviewMenu")
         self.log.setLevel(logging.INFO)
 
-        self.init("py-ReviewMenu-mode", None, None,
-                  [("AYON", [
-                      ("_", None),  # separator
-                      ("Review", self.runme, None, self._is_active)
-                  ])],
-                  # initialization order
-                  sortKey="source_setup",
-                  ordering=20)
+        self.init(
+            "py-ReviewMenu-mode",
+            None,
+            None,
+            [
+                (
+                    "AYON",
+                    [
+                        ("_", None),  # separator
+                        ("Review", self.runme, None, self._is_active),
+                    ],
+                )
+            ],
+            # initialization order
+            sortKey="source_setup",
+            ordering=20,
+        )
 
         # spacers
         self.verticalSpacer = QtWidgets.QSpacerItem(
