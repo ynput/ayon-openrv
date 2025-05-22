@@ -56,7 +56,25 @@ def get_cycle_frame(frame=None, frames_lookup=None, direction="next"):
 
 
 class ReviewMenu(MinorMode):
-    def __init__(self):
+    """Review menu for viewing and annotating frames with status and comments.
+
+    Creates a dockable widget for RV adding review specific functionality like
+    status management, commenting, and frame annotations. It attaches to
+    the AYON menu and provides controls for navigating through annotated
+    frames and managing review metadata.
+
+    The widget displays:
+    - Shot name and status
+    - Review comment field
+    - Annotation navigation controls
+    - Image export functionality
+
+    It stores review status and comments as metadata on the source node using
+    the AYON attribute prefix. The widget is designed to be used in
+    conjunction with the AYON pipeline.
+    """
+
+    def __init__(self) -> None:
         MinorMode.__init__(self)
         self.log = logging.getLogger("ReviewMenu")
         self.log.setLevel(logging.INFO)
