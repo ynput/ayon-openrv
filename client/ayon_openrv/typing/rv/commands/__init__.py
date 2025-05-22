@@ -1,8 +1,6 @@
 """Type hints for rv.commands module."""
 
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union, overload
-import os
-from typing_extensions import Literal
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 # Type aliases for common return types
 Vector2f = List[float]  # 2D vector
@@ -95,38 +93,37 @@ def addSourcesVerbose(filePathsAndOptions: List[List[str]], tag: str = "") -> Li
 def setProgressiveSourceLoading(enable: bool) -> None: ...
 def progressiveSourceLoading() -> bool: ...
 def newImageSource(
-    mediaName: str, 
-    width: int, 
-    height: int, 
-    uncropWidth: int, 
-    uncropHeight: int, 
-    uncropX: int, 
-    uncropY: int, 
-    pixelAspect: float, 
-    channels: int, 
-    bitsPerChannel: int, 
-    floatingPoint: bool, 
-    startFrame: int, 
-    endFrame: int, 
-    fps: float, 
-    layers: Optional[List[str]] = None, 
-    views: Optional[List[str]] = None
+    mediaName: str,
+    width: int,
+    height: int,
+    uncropWidth: int,
+    uncropHeight: int,
+    uncropX: int,
+    uncropY: int,
+    pixelAspect: float,
+    channels: int,
+    bitsPerChannel: int,
+    floatingPoint: bool,
+    startFrame: int,
+    endFrame: int,
+    fps: float,
+    layers: Optional[List[str]] = None,
+    views: Optional[List[str]] = None,
 ) -> str: ...
 def newImageSourcePixels(
-    sourceName: str, 
-    frame: int, 
-    layer: Optional[str] = None, 
-    view: Optional[str] = None
+    sourceName: str,
+    frame: int,
+    layer: Optional[str] = None,
+    view: Optional[str] = None,
 ) -> str: ...
 def insertCreatePixelBlock(event: Any) -> None: ...
-def addToSource(fileName: str, tag: str = "") -> None: ...
 def addToSource(sourceNode: str, fileName: str, tag: str) -> None: ...
 def setSourceMedia(sourceNode: str, fileNames: List[str], tag: str = "") -> None: ...
 def addSourceMediaRep(
-    sourceNode: str, 
-    mediaRepName: str, 
-    mediaRepPathsAndOptions: List[str], 
-    tag: str = ""
+    sourceNode: str,
+    mediaRepName: str,
+    mediaRepPathsAndOptions: List[str],
+    tag: str = "",
 ) -> str: ...
 def setActiveSourceMediaRep(sourceNode: str, mediaRepName: str, tag: str = "") -> None: ...
 def sourceMediaRep(sourceNode: str) -> str: ...
@@ -134,7 +131,6 @@ def sourceMediaReps(sourceNode: str) -> List[str]: ...
 def sourceMediaRepsAndNodes(sourceOrSwitchNode: str) -> List[Tuple[str, str]]: ...
 def sourceMediaRepSwitchNode(sourceNode: str) -> str: ...
 def sourceMediaRepSourceNode(sourceNode: str) -> str: ...
-def relocateSource(oldFileName: str, newFileName: str) -> None: ...
 def relocateSource(sourceNode: str, oldFileName: str, newFileName: str) -> None: ...
 
 
