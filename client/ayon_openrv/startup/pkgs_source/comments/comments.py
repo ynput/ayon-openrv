@@ -1,9 +1,13 @@
 # review code
-from PySide2 import QtCore, QtWidgets, QtGui
+import logging
+from collections import OrderedDict
+from pathlib import Path
 
-from rv.rvtypes import MinorMode
-import rv.qtutils
 import rv.commands
+import rv.qtutils
+from ayon_openrv.api import review
+from PySide2 import QtCore, QtGui, QtWidgets
+from rv.rvtypes import MinorMode
 
 
 def get_cycle_frame(frame=None, frames_lookup=None, direction="next"):
@@ -52,16 +56,46 @@ def get_cycle_frame(frame=None, frames_lookup=None, direction="next"):
 
 
 class ReviewMenu(MinorMode):
-    def __init__(self):
+    """Review menu for viewing and annotating frames with status and comments.
+
+    Creates a dockable widget for RV adding review specific functionality like
+    status management, commenting, and frame annotations. It attaches to
+    the AYON menu and provides controls for navigating through annotated
+    frames and managing review metadata.
+
+    The widget displays:
+    - Shot name and status
+    - Review comment field
+    - Annotation navigation controls
+    - Image export functionality
+
+    It stores review status and comments as metadata on the source node using
+    the AYON attribute prefix. The widget is designed to be used in
+    conjunction with the AYON pipeline.
+    """
+
+    def __init__(self) -> None:
         MinorMode.__init__(self)
-        self.init("py-ReviewMenu-mode", None, None,
-                  [("AYON", [
-                      ("_", None),  # separator
-                      ("Review", self.runme, None, self._is_active)
-                  ])],
-                  # initialization order
-                  sortKey="source_setup",
-                  ordering=20)
+        self.log = logging.getLogger("ReviewMenu")
+        self.log.setLevel(logging.INFO)
+
+        self.init(
+            "py-ReviewMenu-mode",
+            None,
+            None,
+            [
+                (
+                    "AYON",
+                    [
+                        ("_", None),  # separator
+                        ("Review", self.runme, None, self._is_active),
+                    ],
+                )
+            ],
+            # initialization order
+            sortKey="source_setup",
+            ordering=20,
+        )
 
         # spacers
         self.verticalSpacer = QtWidgets.QSpacerItem(
@@ -104,7 +138,7 @@ class ReviewMenu(MinorMode):
         self.review_main_layout_head.addWidget(self.current_shot_status)
         self.review_main_layout_head.addWidget(self.current_shot_comment)
 
-        self.get_view_image = QtWidgets.QPushButton("Get image")
+        self.get_view_image = QtWidgets.QPushButton("Export frame as image")
         self.review_main_layout_head.addWidget(self.get_view_image)
 
         self.remove_cmnt_status_btn = QtWidgets.QPushButton("Remove comment and status")  # noqa
@@ -148,9 +182,11 @@ class ReviewMenu(MinorMode):
                                         self.dockWidget)
 
             self.setup_listeners()
+            self.on_frame_changed(None)
         else:
             # Toggle visibility state
             self.dockWidget.toggleViewAction().trigger()
+            self.on_frame_changed(None)
 
     def _is_active(self):
         if self.dockWidget is not None and self.dockWidget.isVisible():
@@ -171,32 +207,87 @@ class ReviewMenu(MinorMode):
         item.setFont(font)
 
     def setup_listeners(self):
-        # Some other supported signals:
-        # new-source
-        # graph-state-change,
-        # after-progressive-loading,
-        # media-relocated
-        rv.commands.bind("default", "global", "source-media-set",
-                         self.graph_change, "Doc string")
-        rv.commands.bind("default", "global", "after-graph-view-change",
-                         self.graph_change, "Doc string")
+        """ Setup listeners for events in RV.
 
-    def graph_change(self, event):
-        # update the view
+        more information:
+            https://aswf-openrv.readthedocs.io/en/latest/rv-manuals/rv-reference-manual/rv-reference-manual-chapter-five.html
+
+        Some other supported signals:
+        - new-node
+        - graph-state-change
+        - before-graph-view-change
+        - after-graph-view-change
+        - after-progressive-loading
+        - range-changed
+        - media-relocated
+        - source-group-activated
+        - after-graph-view-change
+        - source-modified
+        - source-media-set
+        - source-media-rep-activated
+        - incoming-source-path
+        - source-media-rep-activated
+        - before-session-deletion
+        - session-initialized
+        - after-progressive-loading
+        - margins-changed
+        - mark-frame
+        - unmark-frame
+        """
+        # frame-changed event
+        rv.commands.bind(
+            "default", "global", "frame-changed",
+            self.on_frame_changed, "Update UI on frame change",
+        )
+        # new-source event
+        rv.commands.bind(
+            "default", "global", "new-source",
+            self.update_ui_attribs, "Update UI on new source",
+        )
+        # graph-node-inputs-changed
+        rv.commands.bind(
+            "default", "global", "graph-node-inputs-changed",
+            self.graph_change, "Update UI on graph node inputs changed",
+        )
+
+    def on_frame_changed(self, event):
+        """Handler for when the active clip/source changes"""
+        if event is not None:
+            # If the event is not None, it means the frame has changed
+            self.log.debug(f"on_frame_changed: event={event.name()} | {event.contents()}")
+
+        # Get the new active source/clip
         self.get_view_source()
 
-    def get_view_source(self):
-        sources = rv.commands.sourcesAtFrame(rv.commands.frame())
-        self.current_loaded_viewnode = sources[0] if sources else None
+        # Update the UI to reflect the new clip
         self.update_ui_attribs()
+
+    def graph_change(self, event):
+        self.log.debug("graph_change")
+        # Get the new active source/clip
+        self.get_view_source()
+
+        # Update the UI to reflect the new clip
+        self.update_ui_attribs()
+
+    def get_view_source(self):
+        try:
+            sources = rv.commands.sourcesAtFrame(rv.commands.frame())
+            self.current_loaded_viewnode = (
+                sources[0] if sources and len(sources) > 0 else None)
+            self.log.debug(f"get_view_source: {self.current_loaded_viewnode}")
+        except Exception as e:
+            self.log.error(f"Error getting sources: {e}")
+            self.current_loaded_viewnode = None
 
     def update_ui_attribs(self):
         node = self.current_loaded_viewnode
-
+        self.log.debug(f"update_ui_attribs: {node}")
         # Use namespace as loaded shot label
         namespace = ""
         if node is not None:
-            property_name = "{}.ayon.namespace".format(node)
+            property_name = f"{node}.{review.AYON_ATTR_PREFIX}namespace"
+            self.log.debug(f"property_name: {property_name}")
             if rv.commands.propertyExists(property_name):
                 namespace = rv.commands.getStringProperty(property_name)[0]
 
@@ -208,19 +299,31 @@ class ReviewMenu(MinorMode):
     def setup_combo_status(self):
         # setup properties
         node = self.current_loaded_viewnode
-        att_prop = node + ".ayon_review.task_status"
+        self.log.debug(f"setup_combo_status: {node}")
+        if node is None:
+            return
+
+        att_prop = f"{node}.{review.AYON_ATTR_PREFIX}task_status"
         status = self.current_shot_status.currentText()
+
+         # Check if property exists, create it if it doesn't
+        if not rv.commands.propertyExists(att_prop):
+            rv.commands.newProperty(att_prop, rv.commands.StringType, 1)
+
         rv.commands.setStringProperty(att_prop, [str(status)], True)
+        self.current_shot_comment.setFocus()
+
         self.current_shot_status.setCurrentText(status)
 
     def setup_properties(self):
         # setup properties
         node = self.current_loaded_viewnode
+        self.log.debug(f"setup_properties: {node}")
         if node is None:
             self.current_shot_status.setCurrentIndex(0)
             return
 
-        att_prop = node + ".ayon_review.task_status"
+        att_prop = f"{node}.{review.AYON_ATTR_PREFIX}task_status"
         if not rv.commands.propertyExists(att_prop):
             status = "In Review"
             rv.commands.newProperty(att_prop, rv.commands.StringType, 1)
@@ -232,21 +335,23 @@ class ReviewMenu(MinorMode):
 
     def comment_update(self):
         node = self.current_loaded_viewnode
+        self.log.debug(f"comment_update: {node}")
         if node is None:
             return
 
         comment = self.current_shot_comment.toPlainText()
-        att_prop = node + ".ayon_review.task_comment"
+        att_prop = f"{node}.{review.AYON_ATTR_PREFIX}task_comment"
         rv.commands.newProperty(att_prop, rv.commands.StringType, 1)
         rv.commands.setStringProperty(att_prop, [str(comment)], True)
 
     def get_comment(self):
         node = self.current_loaded_viewnode
+        self.log.debug(f"get_comment: {node}")
         if node is None:
             self.current_shot_comment.setPlainText("")
             return
 
-        att_prop = node + ".ayon_review.task_comment"
+        att_prop = f"{node}.{review.AYON_ATTR_PREFIX}task_comment"
         if not rv.commands.propertyExists(att_prop):
             rv.commands.newProperty(att_prop, rv.commands.StringType, 1)
             rv.commands.setStringProperty(att_prop, [""], True)
@@ -255,14 +360,14 @@ class ReviewMenu(MinorMode):
             self.current_shot_comment.setPlainText(status)
 
     def clean_cmnt_status(self):
-        attribs = []
         node = self.current_loaded_viewnode
-        att_prop_cmnt = node + ".ayon_review.task_comment"
-        att_prop_status = node + ".ayon_review.task_status"
-        attribs.append(att_prop_cmnt)
-        attribs.append(att_prop_status)
+        self.log.debug(f"clean_cmnt_status: {node}")
 
-        for prop in attribs:
+        for prop in [
+            f"{node}.{review.AYON_ATTR_PREFIX}task_comment",
+            f"{node}.{review.AYON_ATTR_PREFIX}task_status",
+        ]:
+            self.log.debug(f"prop: {prop}")
             if not rv.commands.propertyExists(prop):
                 rv.commands.newProperty(prop, rv.commands.StringType, 1)
             rv.commands.setStringProperty(prop, [""], True)
@@ -271,13 +376,21 @@ class ReviewMenu(MinorMode):
         self.current_shot_comment.setPlainText("")
 
     def get_gui_image(self, filename=None):
+        current_attributes = OrderedDict(rv.commands.getCurrentAttributes())
+        frame_number = rv.commands.frame()
+        current_frame = current_attributes.get("SourceFrame", frame_number)
+        current_file_path = Path(current_attributes.get("File", "Image.png"))
+
+        current_frame_name = current_file_path.stem
+        if current_frame not in current_frame_name:
+            current_frame_name = f"{current_frame_name}.{current_frame}"
 
         if not filename:
             # Allow user to pick filename
             filename, _ = QtWidgets.QFileDialog.getSaveFileName(
                 self.customDockWidget,
                 "Save image",
-                "image.png",
+                f"annotate_{current_frame_name}.png",
                 "Images (*.png *.jpg *.jpeg *.exr)"
             )
             if not filename:
