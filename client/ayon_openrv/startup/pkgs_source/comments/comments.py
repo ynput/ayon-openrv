@@ -207,25 +207,54 @@ class ReviewMenu(MinorMode):
         item.setFont(font)
 
     def setup_listeners(self):
-        # Some other supported signals:
-        # new-source
-        # graph-state-change,
-        # after-progressive-loading,
-        # media-relocated
-        # source-group-activated
-        # First try event-based approach with multiple possible events
+        """ Setup listeners for events in RV.
+
+        more information:
+            https://aswf-openrv.readthedocs.io/en/latest/rv-manuals/rv-reference-manual/rv-reference-manual-chapter-five.html
+
+        Some other supported signals:
+        - new-node
+        - graph-state-change
+        - before-graph-view-change
+        - after-graph-view-change
+        - after-progressive-loading
+        - range-changed
+        - media-relocated
+        - source-group-activated
+        - after-graph-view-change
+        - source-modified
+        - source-media-set
+        - source-media-rep-activated
+        - incoming-source-path
+        - source-media-rep-activated
+        - before-session-deletion
+        - session-initialized
+        - after-progressive-loading
+        - margins-changed
+        - mark-frame
+        - unmark-frame
+        """
+        # frame-changed event
         rv.commands.bind(
             "default", "global", "frame-changed",
             self.on_frame_changed, "Update UI on frame change",
         )
+        # new-source event
         rv.commands.bind(
             "default", "global", "new-source",
             self.update_ui_attribs, "Update UI on new source",
         )
+        # graph-node-inputs-changed
+        rv.commands.bind(
+            "default", "global", "graph-node-inputs-changed",
+            self.graph_change, "Update UI on graph node inputs changed",
+        )
 
     def on_frame_changed(self, event):
         """Handler for when the active clip/source changes"""
-        self.log.debug(f"on_clip_changed: event={event}")
+        if event is not None:
+            # If the event is not None, it means the frame has changed
+            self.log.debug(f"on_frame_changed: event={event.name()} | {event.contents()}")
 
         # Get the new active source/clip
         self.get_view_source()
@@ -235,8 +264,11 @@ class ReviewMenu(MinorMode):
 
     def graph_change(self, event):
         self.log.debug("graph_change")
-        # update the view
+        # Get the new active source/clip
         self.get_view_source()
+
+        # Update the UI to reflect the new clip
+        self.update_ui_attribs()
 
     def get_view_source(self):
         try:
