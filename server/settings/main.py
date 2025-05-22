@@ -3,6 +3,11 @@ from ayon_server.settings import (
     SettingsField,
 )
 
+from .actions import (
+    ACTIONS_DEFAULT_VALUES,
+    ActionsModel,
+)
+
 from .imageio import ImageIOSettings
 
 
@@ -30,11 +35,16 @@ class OpenRVSettings(BaseSettingsModel):
         default_factory=ImageIOSettings,
         title="Color Management (imageio)",
     )
+    actions: ActionsModel = SettingsField(
+        title="Actions",
+        default_factory=ActionsModel,
+    )
 
 DEFAULT_VALUES = {
     "network": {
         "conn_name": "ayon-rv-connect",
         "conn_port": 45124,
         "timeout": 20,
-    }
+    },
+    "actions": ACTIONS_DEFAULT_VALUES,
 }
