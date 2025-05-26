@@ -79,9 +79,27 @@ class ReviewMenu(MinorMode):
         self.log = logging.getLogger("ReviewMenu")
         self.log.setLevel(logging.INFO)
 
+        bindings = [
+            (
+                "frame-changed",
+                self.on_frame_changed,
+                "Update UI on frame change",
+            ),
+            (
+                "source-group-complete",
+                self.update_ui_attribs,
+                "Update UI on new source",
+            ),
+            (
+                "graph-node-inputs-changed",
+                self.graph_change,
+                "Update UI on graph node inputs changed",
+            )
+        ]
+
         self.init(
             "py-ReviewMenu-mode",
-            None,
+            bindings,
             None,
             [
                 (
@@ -181,7 +199,6 @@ class ReviewMenu(MinorMode):
             self.rvWindow.addDockWidget(QtCore.Qt.RightDockWidgetArea,
                                         self.dockWidget)
 
-            self.setup_listeners()
             self.on_frame_changed(None)
         else:
             # Toggle visibility state
@@ -206,51 +223,7 @@ class ReviewMenu(MinorMode):
             font.setWeight(75)
         item.setFont(font)
 
-    def setup_listeners(self):
-        """ Setup listeners for events in RV.
-
-        more information:
-            https://aswf-openrv.readthedocs.io/en/latest/rv-manuals/rv-reference-manual/rv-reference-manual-chapter-five.html
-
-        Some other supported signals:
-        - new-node
-        - graph-state-change
-        - before-graph-view-change
-        - after-graph-view-change
-        - after-progressive-loading
-        - range-changed
-        - media-relocated
-        - source-group-activated
-        - after-graph-view-change
-        - source-modified
-        - source-media-set
-        - source-media-rep-activated
-        - incoming-source-path
-        - source-media-rep-activated
-        - before-session-deletion
-        - session-initialized
-        - after-progressive-loading
-        - margins-changed
-        - mark-frame
-        - unmark-frame
-        """
-        # frame-changed event
-        rv.commands.bind(
-            "default", "global", "frame-changed",
-            self.on_frame_changed, "Update UI on frame change",
-        )
-        # new-source event
-        rv.commands.bind(
-            "default", "global", "new-source",
-            self.update_ui_attribs, "Update UI on new source",
-        )
-        # graph-node-inputs-changed
-        rv.commands.bind(
-            "default", "global", "graph-node-inputs-changed",
-            self.graph_change, "Update UI on graph node inputs changed",
-        )
-
-    def on_frame_changed(self, event):
+    def on_frame_changed(self, event=None):
         """Handler for when the active clip/source changes"""
         if event is not None:
             # If the event is not None, it means the frame has changed
@@ -262,7 +235,7 @@ class ReviewMenu(MinorMode):
         # Update the UI to reflect the new clip
         self.update_ui_attribs()
 
-    def graph_change(self, event):
+    def graph_change(self, event=None):
         self.log.debug("graph_change")
         # Get the new active source/clip
         self.get_view_source()
@@ -280,7 +253,7 @@ class ReviewMenu(MinorMode):
             self.log.error(f"Error getting sources: {e}")
             self.current_loaded_viewnode = None
 
-    def update_ui_attribs(self):
+    def update_ui_attribs(self, event=None):
         node = self.current_loaded_viewnode
         self.log.debug(f"update_ui_attribs: {node}")
         # Use namespace as loaded shot label
