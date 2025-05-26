@@ -233,7 +233,7 @@ class ReviewMenu(MinorMode):
         self.get_view_source()
 
         # Update the UI to reflect the new clip
-        self.update_ui_attribs()
+        self.update_ui_attribs(event)
 
     def graph_change(self, event=None):
         self.log.debug("graph_change")
@@ -241,7 +241,7 @@ class ReviewMenu(MinorMode):
         self.get_view_source()
 
         # Update the UI to reflect the new clip
-        self.update_ui_attribs()
+        self.update_ui_attribs(event)
 
     def get_view_source(self):
         try:
