@@ -3,7 +3,7 @@ import os
 
 import rv
 
-from .pipeline import AYON_ATTR_PREFIX
+from ayon_openrv.constants import AYON_ATTR_PREFIX
 
 
 def get_path_annotated_frame(frame=None, folder_name=None, folder_path=None):

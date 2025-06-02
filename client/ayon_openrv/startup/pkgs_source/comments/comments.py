@@ -5,30 +5,31 @@ from pathlib import Path
 
 import rv.commands
 import rv.qtutils
-from ayon_openrv.api import review
+
+from ayon_openrv.constants import AYON_ATTR_PREFIX
 from PySide2 import QtCore, QtGui, QtWidgets
 from rv.rvtypes import MinorMode
 
 
 def get_cycle_frame(frame=None, frames_lookup=None, direction="next"):
-    """Return nearest frame in direction in frames lookup.
+    """Cycle through frames in a lookup list, returning the nearest frame.
 
-    If the nearest frame in that direction does not exist then cycle
-    over to the frames taking the first entry at the other end.
+    This function finds the frame in `frames_lookup` that is closest to the
+    given `frame` in the specified `direction`. If no frame exists in the
+    specified direction, it cycles to the other end of the list.
 
     Note:
-        This function can return None if there are no frames to lookup in.
+        Returns None if `frames_lookup` is empty.
 
     Args:
-        frame (int): frame to search from
-        frames_lookup (list): frames to search in.
-        direction (str, optional): search direction, either "next" or "prev"
+        frame (int): The frame number to start the search from.
+        frames_lookup (list[int]): A list of frame numbers to search within.
+        direction (str): The direction to search, either "next" or "prev".
             Defaults to "next".
 
     Returns:
-        int or None: The nearest frame number in that direction or None
-            if no lookup frames were passed.
-
+        int or None: The nearest frame number in the specified direction,
+            or None if `frames_lookup` is empty.
     """
     if direction not in {"prev", "next"}:
         raise ValueError("Direction must be either 'next' or 'prev'. "
@@ -259,7 +260,7 @@ class ReviewMenu(MinorMode):
         # Use namespace as loaded shot label
         namespace = ""
         if node is not None:
-            property_name = f"{node}.{review.AYON_ATTR_PREFIX}namespace"
+            property_name = f"{node}.{AYON_ATTR_PREFIX}namespace"
             self.log.debug(f"property_name: {property_name}")
             if rv.commands.propertyExists(property_name):
                 namespace = rv.commands.getStringProperty(property_name)[0]
@@ -276,7 +277,7 @@ class ReviewMenu(MinorMode):
         if node is None:
             return
 
-        att_prop = f"{node}.{review.AYON_ATTR_PREFIX}task_status"
+        att_prop = f"{node}.{AYON_ATTR_PREFIX}task_status"
         status = self.current_shot_status.currentText()
 
          # Check if property exists, create it if it doesn't
@@ -296,7 +297,7 @@ class ReviewMenu(MinorMode):
             self.current_shot_status.setCurrentIndex(0)
             return
 
-        att_prop = f"{node}.{review.AYON_ATTR_PREFIX}task_status"
+        att_prop = f"{node}.{AYON_ATTR_PREFIX}task_status"
         if not rv.commands.propertyExists(att_prop):
             status = "In Review"
             rv.commands.newProperty(att_prop, rv.commands.StringType, 1)
@@ -313,7 +314,7 @@ class ReviewMenu(MinorMode):
             return
 
         comment = self.current_shot_comment.toPlainText()
-        att_prop = f"{node}.{review.AYON_ATTR_PREFIX}task_comment"
+        att_prop = f"{node}.{AYON_ATTR_PREFIX}task_comment"
         rv.commands.newProperty(att_prop, rv.commands.StringType, 1)
         rv.commands.setStringProperty(att_prop, [str(comment)], True)
 
@@ -324,7 +325,7 @@ class ReviewMenu(MinorMode):
             self.current_shot_comment.setPlainText("")
             return
 
-        att_prop = f"{node}.{review.AYON_ATTR_PREFIX}task_comment"
+        att_prop = f"{node}.{AYON_ATTR_PREFIX}task_comment"
         if not rv.commands.propertyExists(att_prop):
             rv.commands.newProperty(att_prop, rv.commands.StringType, 1)
             rv.commands.setStringProperty(att_prop, [""], True)
@@ -337,8 +338,8 @@ class ReviewMenu(MinorMode):
         self.log.debug(f"clean_cmnt_status: {node}")
 
         for prop in [
-            f"{node}.{review.AYON_ATTR_PREFIX}task_comment",
-            f"{node}.{review.AYON_ATTR_PREFIX}task_status",
+            f"{node}.{AYON_ATTR_PREFIX}task_comment",
+            f"{node}.{AYON_ATTR_PREFIX}task_status",
         ]:
             self.log.debug(f"prop: {prop}")
             if not rv.commands.propertyExists(prop):

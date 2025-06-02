@@ -125,13 +125,14 @@ def load_data(dataset=None):
     for representation in representations:
         load_container(Loader, representation)
 
-
-def createMode():
-    # This function triggers for each RV session window being opened, for
-    # example when using File > New Session this will trigger again. As such
-    # we only want to trigger the startup install when the host is not
-    # registered yet.
-    if not registered_host():
-        install_host_in_ayon()
-        data_loader()
-    return AYONMenus()
+# only add menu items if AYON_RV_NO_MENU is not set to 1
+if os.getenv("AYON_RV_NO_MENU") != "1":
+    def createMode():
+        # This function triggers for each RV session window being opened, for
+        # example when using File > New Session this will trigger again. As such
+        # we only want to trigger the startup install when the host is not
+        # registered yet.
+        if not registered_host():
+            install_host_in_ayon()
+            data_loader()
+        return AYONMenus()

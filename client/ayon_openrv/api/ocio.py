@@ -98,6 +98,63 @@ def set_current_ocio_active_state(state):
     )
 
 
+def set_ocio_display_active_state():
+    """Set the OCIO display active state for the currently active source.
+
+    This is a hacky workaround to enable displays to be OCIO display
+    active state.
+    """
+
+    # See: https://community.shotgridsoftware.com/t/how-to-enable-disable-ocio-and-set-ocio-colorspace-for-group-using-python/17178  # noqa
+    activated_displays = []
+    window = rv.qtutils.sessionWindow()
+    menu_bar = window.menuBar()
+    for action in menu_bar.actions():
+        if action.text() != "OCIO" or action.toolTip() != "OCIO":
+            continue
+
+        ocio_menu = action.menu()
+
+        # first collect all activated displays
+        for ocio_action in ocio_menu.actions():
+            display_name = ocio_action.toolTip()
+            if (
+                "DISPLAY" in display_name
+                and ocio_action not in activated_displays
+            ):
+                activated_displays.append(ocio_action)
+
+    # It could be empty if no OCIO menu is activated
+    if activated_displays:
+        # Set the active state for all displays
+        temp_data = {
+            f"displayGroup{index}_colorPipeline": ocio_action
+            for index, ocio_action in enumerate(activated_displays)
+        }
+
+        for ocio_display_node, ocio_action in temp_data.items():
+            node = _get_OCIODislay_nodes().get(
+                ocio_display_node)
+            if node is None:
+                active_action = ocio_action.menu().actions()[0]
+                active_action.trigger()
+
+
+def _get_OCIODislay_nodes():
+    nodes_by_name = {}
+    # make sure we collect OCIO display nodes
+    for node in rv.commands.nodes():
+        group_node = rv.commands.nodeGroup(node)
+        gnode_type = rv.commands.nodeType(node)
+        if (
+            group_node is not None
+            and group_node.startswith("displayGroup")
+            and group_node.endswith("_colorPipeline")
+            and "OCIODisplay" in gnode_type
+        ):
+            nodes_by_name[group_node] = node
+    return nodes_by_name
+
 def set_group_ocio_active_state(group, state):
     """Set the OCIO state for the 'currently active source'.
 

@@ -5,7 +5,7 @@ import json
 import pyblish
 import rv
 
-from ayon_openrv import OPENRV_ROOT_DIR
+from ..constants import OPENRV_ROOT_DIR
 
 from ayon_core.host import HostBase, ILoadHost, IWorkfileHost, IPublishHost
 from ayon_core.pipeline import (
