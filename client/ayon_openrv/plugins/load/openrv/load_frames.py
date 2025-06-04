@@ -1,9 +1,9 @@
 """Loader for image sequences and single frames in OpenRV."""
 from __future__ import annotations
-
+import os
+import rv
 from typing import ClassVar, Optional
 
-import rv
 from ayon_core.lib.transcoding import IMAGE_EXTENSIONS
 from ayon_core.pipeline import load
 from ayon_openrv.api.ocio import (
@@ -31,55 +31,151 @@ class FramesLoader(load.LoaderPlugin):
              namespace: Optional[str] = None,
              options: Optional[dict] = None) -> None:
         """Load the frames into OpenRV."""
-        sequence = rv.commands.sequenceOfFile(
-            self.filepath_from_context(context))
+        filepath = rv.commands.sequenceOfFile(
+            self.filepath_from_context(context))[0]
 
+        rep_name = os.path.basename(filepath)
+
+        # change path
         namespace = namespace or context["folder"]["name"]
+        loaded_node = rv.commands.addSourceVerbose([filepath])
 
-        loaded_node = rv.commands.addSourceVerbose([sequence[0]])
+        node = self._finalize_loaded_node(
+            loaded_node, rep_name, filepath)
 
         # update colorspace
-        self.set_representation_colorspace(loaded_node,
+        self.set_representation_colorspace(node,
                                            context["representation"])
 
         imprint_container(
-            loaded_node,
+            node,
             name=name,
             namespace=namespace,
             context=context,
             loader=self.__class__.__name__
         )
 
+    def _finalize_loaded_node(self, loaded_node, rep_name, filepath):
+        """Finalize the loaded node in OpenRV.
+
+        We are organizing all loaded sources under a switch group so we can
+        let user switch between versions later on. Every new updated verion is
+        added as new media representation under the switch group.
+
+        We are removing firstly added source since it does not have a name.
+
+        Args:
+            loaded_node (str): The node that was loaded.
+            rep_name (str): The name of the representation.
+            filepath (str): The path of the representation.
+
+        Returns:
+            str: The node that was loaded.
+
+        """
+        node = loaded_node
+
+        rv.commands.addSourceMediaRep(
+            loaded_node,
+            rep_name,
+            [filepath]
+        )
+        rv.commands.setActiveSourceMediaRep(
+            loaded_node,
+            rep_name,
+        )
+        source_reps = rv.commands.sourceMediaReps(loaded_node)
+        switch_node = rv.commands.sourceMediaRepSwitchNode(loaded_node)
+        node_type = rv.commands.nodeType(switch_node)
+
+        for node in rv.commands.sourceMediaRepsAndNodes(switch_node):
+            source_node_name = node[0]
+            source_node = node[1]
+            node_type = rv.commands.nodeType(source_node)
+            node_gorup = rv.commands.nodeGroup(source_node)
+
+            # we are removing the firstly added wource since it does not have
+            # a name and we don't want to confuse the user with multiple
+            # versions of the same source but one of them without a name
+            if (
+                node_type == "RVFileSource"
+                and source_node_name == ""
+            ):
+                rv.commands.deleteNode(node_gorup)
+            else:
+                node = source_node
+                break
+
+        rv.commands.setStringProperty(
+            f"{node}.media.name", [rep_name], True)
+
+        rv.commands.reload()
+        return node
+
+
     def update(self, container: dict, context: dict) -> None:
         """Update loaded container."""
         node = container["node"]
-
         filepath = rv.commands.sequenceOfFile(
             self.filepath_from_context(context))[0]
 
         repre_entity = context["representation"]
 
-        # change path
-        rv.commands.setSourceMedia(node, [filepath])
+        new_rep_name = os.path.basename(filepath)
+        source_reps = rv.commands.sourceMediaReps(node)
+        self.log.warning(f">> source_reps: {source_reps}")
+
+        if new_rep_name not in source_reps:
+            # change path
+            rv.commands.addSourceMediaRep(
+                node,
+                new_rep_name,
+                [filepath]
+            )
+        else:
+            self.log.warning(">> new_rep_name already in source_reps")
+
+        rv.commands.setActiveSourceMediaRep(
+            node,
+            new_rep_name,
+        )
+        source_rep_name = rv.commands.sourceMediaRep(node)
+        self.log.info(f"New source_rep_name: {source_rep_name}")
 
         # update colorspace
         self.set_representation_colorspace(node, context["representation"])
 
         # update name
+        rep_name = rv.commands.getStringProperty(f"{node}.media.name")
         rv.commands.setStringProperty(
-            f"{node}.media.name", ["newname"], allowResize=True)
+            f"{node}.media.name", [new_rep_name], True)
         rv.commands.setStringProperty(
-            f"{node}.media.repName", ["repname"], allowResize=True)
+            f"{node}.media.repName", rep_name, True)
         rv.commands.setStringProperty(
-            f"{node}.ayon.representation",
-            [repre_entity["id"]], allowResize=True
-        )
+            f"{node}.ayon.representation", [repre_entity["id"]], True)
+        rv.commands.reload()
 
     def remove(self, container: dict) -> None:  # noqa: PLR6301
         """Remove loaded container."""
         node = container["node"]
-        group = rv.commands.nodeGroup(node)
-        rv.commands.deleteNode(group)
+        # since we are organizing all loaded sources under a switch group
+        # we need to remove all the source nodes organized under it
+        switch_node = rv.commands.sourceMediaRepSwitchNode(node)
+        for node in rv.commands.sourceMediaRepsAndNodes(switch_node):
+            source_node_name = node[0]
+            source_node = node[1]
+            node_type = rv.commands.nodeType(source_node)
+            node_gorup = rv.commands.nodeGroup(source_node)
+
+            if (
+                node_type == "RVFileSource"
+            ):
+                self.log.warning(f">> node_type: {node_type}")
+                self.log.warning(f">> source_node_name: {source_node_name}")
+                rv.commands.deleteNode(node_gorup)
+
+        rv.commands.reload()
+
 
     @staticmethod
     def set_representation_colorspace(node: str, representation: dict) -> None:
