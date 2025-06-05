@@ -1,9 +1,12 @@
 """Loader for image sequences and single frames in OpenRV."""
-from __future__ import annotations
-import os
-import rv
-from typing import ClassVar, Optional
 
+from __future__ import annotations
+
+import os
+from typing import ClassVar
+
+from jeza_ynput_dev_workspace import docs_initialize
+import rv
 from ayon_core.lib.transcoding import IMAGE_EXTENSIONS
 from ayon_core.pipeline import load
 from ayon_openrv.api.ocio import (
@@ -11,6 +14,8 @@ from ayon_openrv.api.ocio import (
     set_group_ocio_colorspace,
 )
 from ayon_openrv.api.pipeline import imprint_container
+
+docs_initialize()
 
 
 class FramesLoader(load.LoaderPlugin):
@@ -25,14 +30,17 @@ class FramesLoader(load.LoaderPlugin):
     icon = "code-fork"
     color = "orange"
 
-    def load(self,
-             context: dict,
-             name: Optional[str] = None,
-             namespace: Optional[str] = None,
-             options: Optional[dict] = None) -> None:
+    def load(
+        self,
+        context: dict,
+        name: str | None = None,
+        namespace: str | None = None,
+        options: dict | None = None,
+    ) -> None:
         """Load the frames into OpenRV."""
         filepath = rv.commands.sequenceOfFile(
-            self.filepath_from_context(context))[0]
+            self.filepath_from_context(context),
+        )[0]
 
         rep_name = os.path.basename(filepath)
 
@@ -40,19 +48,17 @@ class FramesLoader(load.LoaderPlugin):
         namespace = namespace or context["folder"]["name"]
         loaded_node = rv.commands.addSourceVerbose([filepath])
 
-        node = self._finalize_loaded_node(
-            loaded_node, rep_name, filepath)
+        node = self._finalize_loaded_node(loaded_node, rep_name, filepath)
 
         # update colorspace
-        self.set_representation_colorspace(node,
-                                           context["representation"])
+        self.set_representation_colorspace(node, context["representation"])
 
         imprint_container(
             node,
             name=name,
             namespace=namespace,
             context=context,
-            loader=self.__class__.__name__
+            loader=self.__class__.__name__,
         )
 
     def _finalize_loaded_node(self, loaded_node, rep_name, filepath):
@@ -78,13 +84,12 @@ class FramesLoader(load.LoaderPlugin):
         rv.commands.addSourceMediaRep(
             loaded_node,
             rep_name,
-            [filepath]
+            [filepath],
         )
         rv.commands.setActiveSourceMediaRep(
             loaded_node,
             rep_name,
         )
-        source_reps = rv.commands.sourceMediaReps(loaded_node)
         switch_node = rv.commands.sourceMediaRepSwitchNode(loaded_node)
         node_type = rv.commands.nodeType(switch_node)
 
@@ -97,27 +102,23 @@ class FramesLoader(load.LoaderPlugin):
             # we are removing the firstly added wource since it does not have
             # a name and we don't want to confuse the user with multiple
             # versions of the same source but one of them without a name
-            if (
-                node_type == "RVFileSource"
-                and source_node_name == ""
-            ):
+            if node_type == "RVFileSource" and source_node_name == "":
                 rv.commands.deleteNode(node_gorup)
             else:
                 node = source_node
                 break
 
-        rv.commands.setStringProperty(
-            f"{node}.media.name", [rep_name], True)
+        rv.commands.setStringProperty(f"{node}.media.name", [rep_name], True)
 
         rv.commands.reload()
         return node
-
 
     def update(self, container: dict, context: dict) -> None:
         """Update loaded container."""
         node = container["node"]
         filepath = rv.commands.sequenceOfFile(
-            self.filepath_from_context(context))[0]
+            self.filepath_from_context(context),
+        )[0]
 
         repre_entity = context["representation"]
 
@@ -130,7 +131,7 @@ class FramesLoader(load.LoaderPlugin):
             rv.commands.addSourceMediaRep(
                 node,
                 new_rep_name,
-                [filepath]
+                [filepath],
             )
         else:
             self.log.warning(">> new_rep_name already in source_reps")
@@ -148,11 +149,16 @@ class FramesLoader(load.LoaderPlugin):
         # update name
         rep_name = rv.commands.getStringProperty(f"{node}.media.name")
         rv.commands.setStringProperty(
-            f"{node}.media.name", [new_rep_name], True)
+            f"{node}.media.name",
+            [new_rep_name],
+            True,
+        )
+        rv.commands.setStringProperty(f"{node}.media.repName", rep_name, True)
         rv.commands.setStringProperty(
-            f"{node}.media.repName", rep_name, True)
-        rv.commands.setStringProperty(
-            f"{node}.ayon.representation", [repre_entity["id"]], True)
+            f"{node}.ayon.representation",
+            [repre_entity["id"]],
+            True,
+        )
         rv.commands.reload()
 
     def remove(self, container: dict) -> None:  # noqa: PLR6301
@@ -167,15 +173,12 @@ class FramesLoader(load.LoaderPlugin):
             node_type = rv.commands.nodeType(source_node)
             node_gorup = rv.commands.nodeGroup(source_node)
 
-            if (
-                node_type == "RVFileSource"
-            ):
+            if node_type == "RVFileSource":
                 self.log.warning(f">> node_type: {node_type}")
                 self.log.warning(f">> source_node_name: {source_node_name}")
                 rv.commands.deleteNode(node_gorup)
 
         rv.commands.reload()
-
 
     @staticmethod
     def set_representation_colorspace(node: str, representation: dict) -> None:

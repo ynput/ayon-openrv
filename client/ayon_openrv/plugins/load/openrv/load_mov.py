@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import rv
 import os
-from typing import ClassVar, Optional
+from typing import ClassVar
 
 from ayon_core.pipeline import load
 from ayon_openrv.api.ocio import (
     set_group_ocio_active_state,
-    set_group_ocio_colorspace
+    set_group_ocio_colorspace,
 )
 from ayon_openrv.api.pipeline import imprint_container
 
@@ -24,29 +24,31 @@ class MovLoader(load.LoaderPlugin):
     icon = "code-fork"
     color = "orange"
 
-    def load(self, context, name=None, namespace=None, data=None):
-
+    def load(
+        self,
+        context: dict,
+        name: str | None = None,
+        namespace: str | None = None,
+        options: dict | None = None,
+    ) -> None:
         filepath = self.filepath_from_context(context)
         namespace = namespace if namespace else context["folder"]["name"]
         rep_name = os.path.basename(filepath)
 
         loaded_node = rv.commands.addSourceVerbose([filepath])
 
-        node = self._finalize_loaded_node(
-            loaded_node, rep_name, filepath)
+        node = self._finalize_loaded_node(loaded_node, rep_name, filepath)
 
         # update colorspace
-        self.set_representation_colorspace(node,
-                                           context["representation"])
+        self.set_representation_colorspace(node, context["representation"])
 
         imprint_container(
             node,
             name=name,
             namespace=namespace,
             context=context,
-            loader=self.__class__.__name__
+            loader=self.__class__.__name__,
         )
-
 
     def _finalize_loaded_node(self, loaded_node, rep_name, filepath):
         """Finalize the loaded node in OpenRV.
@@ -68,16 +70,11 @@ class MovLoader(load.LoaderPlugin):
         """
         node = loaded_node
 
-        rv.commands.addSourceMediaRep(
-            loaded_node,
-            rep_name,
-            [filepath]
-        )
+        rv.commands.addSourceMediaRep(loaded_node, rep_name, [filepath])
         rv.commands.setActiveSourceMediaRep(
             loaded_node,
             rep_name,
         )
-        source_reps = rv.commands.sourceMediaReps(loaded_node)
         switch_node = rv.commands.sourceMediaRepSwitchNode(loaded_node)
         node_type = rv.commands.nodeType(switch_node)
 
@@ -90,26 +87,22 @@ class MovLoader(load.LoaderPlugin):
             # we are removing the firstly added wource since it does not have
             # a name and we don't want to confuse the user with multiple
             # versions of the same source but one of them without a name
-            if (
-                node_type == "RVFileSource"
-                and source_node_name == ""
-            ):
+            if node_type == "RVFileSource" and source_node_name == "":
                 rv.commands.deleteNode(node_gorup)
             else:
                 node = source_node
                 break
 
-        rv.commands.setStringProperty(
-            f"{node}.media.name", [rep_name], True)
+        rv.commands.setStringProperty(f"{node}.media.name", [rep_name], True)
 
         rv.commands.reload()
         return node
 
     def update(self, container, context):
-
         node = container["node"]
         filepath = rv.commands.sequenceOfFile(
-            self.filepath_from_context(context))[0]
+            self.filepath_from_context(context)
+        )[0]
 
         repre_entity = context["representation"]
 
@@ -119,11 +112,7 @@ class MovLoader(load.LoaderPlugin):
 
         if new_rep_name not in source_reps:
             # change path
-            rv.commands.addSourceMediaRep(
-                node,
-                new_rep_name,
-                [filepath]
-            )
+            rv.commands.addSourceMediaRep(node, new_rep_name, [filepath])
         else:
             self.log.warning(">> new_rep_name already in source_reps")
 
@@ -141,11 +130,14 @@ class MovLoader(load.LoaderPlugin):
         # update name
         rep_name = rv.commands.getStringProperty(f"{node}.media.name")
         rv.commands.setStringProperty(
-            f"{node}.media.name", [new_rep_name], True)
+            f"{node}.media.name", [new_rep_name], True
+        )
         rv.commands.setStringProperty(
-            f"{node}.media.repName", [rep_name], True)
+            f"{node}.media.repName", [rep_name], True
+        )
         rv.commands.setStringProperty(
-            f"{node}.ayon.representation", [repre_entity["id"]], True)
+            f"{node}.ayon.representation", [repre_entity["id"]], True
+        )
         rv.commands.reload()
 
     def remove(self, container):
