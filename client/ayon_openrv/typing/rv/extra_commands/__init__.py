@@ -1,6 +1,6 @@
 """Type hints for rv.extra_commands module."""
 
-from typing import Dict, List
+from typing import Dict, List, Any, Optional
 
 
 def findAnnotatedFrames() -> List[int]:
