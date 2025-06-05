@@ -127,16 +127,11 @@ class MovLoader(load.LoaderPlugin):
         representation = context["representation"]
         self.set_representation_colorspace(node, representation)
 
-        # update name
-        rep_name = rv.commands.getStringProperty(f"{node}.media.name")
+        # add data for inventory manager
         rv.commands.setStringProperty(
-            f"{node}.media.name", [new_rep_name], True
-        )
-        rv.commands.setStringProperty(
-            f"{node}.media.repName", [rep_name], True
-        )
-        rv.commands.setStringProperty(
-            f"{node}.ayon.representation", [repre_entity["id"]], True
+            f"{node}.ayon.representation",
+            [repre_entity["id"]],
+            True,
         )
         rv.commands.reload()
 

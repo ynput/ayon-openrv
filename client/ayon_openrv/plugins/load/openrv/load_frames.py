@@ -5,7 +5,6 @@ from __future__ import annotations
 import os
 from typing import ClassVar
 
-from jeza_ynput_dev_workspace import docs_initialize
 import rv
 from ayon_core.lib.transcoding import IMAGE_EXTENSIONS
 from ayon_core.pipeline import load
@@ -15,7 +14,6 @@ from ayon_openrv.api.ocio import (
 )
 from ayon_openrv.api.pipeline import imprint_container
 
-docs_initialize()
 
 
 class FramesLoader(load.LoaderPlugin):
@@ -146,14 +144,7 @@ class FramesLoader(load.LoaderPlugin):
         # update colorspace
         self.set_representation_colorspace(node, context["representation"])
 
-        # update name
-        rep_name = rv.commands.getStringProperty(f"{node}.media.name")
-        rv.commands.setStringProperty(
-            f"{node}.media.name",
-            [new_rep_name],
-            True,
-        )
-        rv.commands.setStringProperty(f"{node}.media.repName", rep_name, True)
+        # add data for inventory manager
         rv.commands.setStringProperty(
             f"{node}.ayon.representation",
             [repre_entity["id"]],
