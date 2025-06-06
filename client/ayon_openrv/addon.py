@@ -3,8 +3,7 @@ import os
 from ayon_core.addon import AYONAddon, IHostAddon, IPluginPaths
 
 from .version import __version__
-
-OPENRV_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+from .constants import OPENRV_ROOT_DIR
 
 
 class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
