@@ -3,17 +3,17 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from ayon_openrv import OPENRV_ROOT_DIR
+from ayon_openrv.constants import OPENRV_ROOT_DIR
 from ayon_applications import PreLaunchHook
 from ayon_core.lib.execute import run_subprocess
 
 
-class PreSetupOpenRV(PreLaunchHook):
+class PreGlobalTools(PreLaunchHook):
     """Pre-hook for openrv"""
     app_groups = ["openrv"]
 
     def execute(self):
-        executable = self.application.find_executable()
+        executable = self.launch_context.executable
 
         # We use the `rvpkg` executable next to the `rv` executable to
         # install and opt-in to the AYON plug-in packages
@@ -33,7 +33,7 @@ class PreSetupOpenRV(PreLaunchHook):
         # Packages/ folder then we don't need to `rvpkg -add` them afterwards
         packages_dest_folder = ay_support_path / "Packages"
         packages_dest_folder.mkdir(exist_ok=True)
-        packages = ["comments", "ayon_menus", "ayon_scripteditor"]
+        packages = ["ayon_menus", "ayon_scripteditor"]
         for package_name in packages:
             package_src = packages_src_folder / package_name
             package_dest = packages_dest_folder / "{}.zip".format(package_name)
