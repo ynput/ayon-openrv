@@ -5,7 +5,6 @@ from __future__ import annotations
 import os
 from typing import ClassVar
 
-import rv
 from ayon_core.lib.transcoding import IMAGE_EXTENSIONS
 from ayon_core.pipeline import load
 from ayon_openrv.api.ocio import (
@@ -14,6 +13,7 @@ from ayon_openrv.api.ocio import (
 )
 from ayon_openrv.api.pipeline import imprint_container
 
+import rv
 
 
 class FramesLoader(load.LoaderPlugin):
@@ -169,7 +169,13 @@ class FramesLoader(load.LoaderPlugin):
                 self.log.warning(f">> source_node_name: {source_node_name}")
                 rv.commands.deleteNode(node_gorup)
 
+            try:
+                rv.commands.deleteNode(node)
+            except Exception as e:
+                self.log.error(f"Error deleting node: {node} - {e}")
+
         rv.commands.reload()
+        rv.commands.deleteNode(switch_node)
 
     @staticmethod
     def set_representation_colorspace(node: str, representation: dict) -> None:
@@ -185,3 +191,6 @@ class FramesLoader(load.LoaderPlugin):
             # Enable OCIO for the node and set the colorspace
             set_group_ocio_active_state(group, state=True)
             set_group_ocio_colorspace(group, colorspace)
+
+    def switch(self, container, context):
+        self.update(container, context)

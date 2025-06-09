@@ -166,3 +166,6 @@ class MovLoader(load.LoaderPlugin):
             # Enable OCIO for the node and set the colorspace
             set_group_ocio_active_state(group, state=True)
             set_group_ocio_colorspace(group, colorspace)
+
+    def switch(self, container, context):
+        self.update(container, context)
