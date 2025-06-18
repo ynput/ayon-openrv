@@ -163,3 +163,5 @@ Temporary Items
 
 # ignore mkdocs build
 site/
+
+node_modules/
