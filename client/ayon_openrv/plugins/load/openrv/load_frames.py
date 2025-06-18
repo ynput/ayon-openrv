@@ -158,7 +158,7 @@ class FramesLoader(load.LoaderPlugin):
         # since we are organizing all loaded sources under a switch group
         # we need to remove all the source nodes organized under it
         switch_node = rv.commands.sourceMediaRepSwitchNode(node)
-        if not node:
+        if not switch_node:
             # just in case someone removed it maunally
             return
 
@@ -166,20 +166,18 @@ class FramesLoader(load.LoaderPlugin):
             source_node_name = node[0]
             source_node = node[1]
             node_type = rv.commands.nodeType(source_node)
-            node_gorup = rv.commands.nodeGroup(source_node)
+            node_group = rv.commands.nodeGroup(source_node)
 
             if node_type == "RVFileSource":
-                self.log.warning(f">> node_type: {node_type}")
-                self.log.warning(f">> source_node_name: {source_node_name}")
-                rv.commands.deleteNode(node_gorup)
-
-            try:
-                rv.commands.deleteNode(node)
-            except Exception as e:
-                self.log.error(f"Error deleting node: {node} - {e}")
+                self.log.info(f"Removing: {source_node_name}")
+                rv.commands.deleteNode(node_group)
 
         rv.commands.reload()
-        rv.commands.deleteNode(switch_node)
+        # switch node is child of some other node. find its parent node
+        parent_node = rv.commands.nodeGroup(switch_node)
+        if parent_node:
+            self.log.info(f"Removing: {parent_node}")
+            rv.commands.deleteNode(parent_node)
 
     @staticmethod
     def set_representation_colorspace(node: str, representation: dict) -> None:
@@ -189,7 +187,6 @@ class FramesLoader(load.LoaderPlugin):
             colorspace = colorspace_data["colorspace"]
             # TODO: Confirm colorspace is valid in current OCIO config
             #   otherwise errors will be spammed from OpenRV for invalid space
-
             group = rv.commands.nodeGroup(node)
 
             # Enable OCIO for the node and set the colorspace
