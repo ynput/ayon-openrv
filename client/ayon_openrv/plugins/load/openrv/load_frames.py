@@ -158,6 +158,10 @@ class FramesLoader(load.LoaderPlugin):
         # since we are organizing all loaded sources under a switch group
         # we need to remove all the source nodes organized under it
         switch_node = rv.commands.sourceMediaRepSwitchNode(node)
+        if not node:
+            # just in case someone removed it maunally
+            return
+
         for node in rv.commands.sourceMediaRepsAndNodes(switch_node):
             source_node_name = node[0]
             source_node = node[1]
