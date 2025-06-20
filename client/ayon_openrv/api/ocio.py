@@ -8,6 +8,7 @@ This assumes that the OpenColorIO Basic Color Management package of RV is both
 installed and loaded.
 
 """
+import os
 import rv.commands
 import rv.qtutils
 
@@ -23,6 +24,10 @@ class OCIONotActiveForGroup(RuntimeError):
 
 def get_group_ocio_look_node(group):
     """Return OCIOLook node from source group"""
+    # make sure this only runs if OCIO is set
+    if os.environ.get("OCIO") is None:
+        return
+
     pipeline = group_member_of_type(group, "RVLookPipelineGroup")
     if pipeline:
         return group_member_of_type(pipeline, "OCIOLook")
@@ -30,6 +35,10 @@ def get_group_ocio_look_node(group):
 
 def get_group_ocio_file_node(group):
     """Return OCIOFile node from source group"""
+    # make sure this only runs if OCIO is set
+    if os.environ.get("OCIO") is None:
+        return
+
     pipeline = group_member_of_type(group, "RVLinearizePipelineGroup")
     if pipeline:
         return group_member_of_type(pipeline, "OCIOFile")
@@ -41,6 +50,10 @@ def set_group_ocio_colorspace(group, colorspace):
     This only works if OCIO is already 'active' for the group. T
 
     """
+    # make sure this only runs if OCIO is set
+    if os.environ.get("OCIO") is None:
+        return
+
     # RV OCIO package
     import ocio_source_setup  # noqa: F401
     node = get_group_ocio_file_node(group)
@@ -164,6 +177,10 @@ def set_group_ocio_active_state(group, state):
     which does these changes.
 
     """
+    # make sure this only runs if OCIO is set
+    if os.environ.get("OCIO") is None:
+        return
+
     ocio_node = get_group_ocio_file_node(group)
     if state == bool(ocio_node):
         # Already in correct state
