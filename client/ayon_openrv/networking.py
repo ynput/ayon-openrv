@@ -12,8 +12,8 @@ from ayon_core.pipeline import (
     load_container,
     discover_loader_plugins,
     get_current_project_name,
+    get_representation_path
 )
-
 from ayon_openrv.version import __version__
 from ayon_openrv.addon import OpenRVAddon
 
@@ -104,7 +104,7 @@ class RVConnector:
                 timeout = int(timeout)
 
             sleep(timeout / 1000) # wait for the message to be sent
-        
+
         self.sock.shutdown(socket.SHUT_RDWR)
         self.sock.close()
         self.is_connected = False
@@ -142,7 +142,7 @@ class RVConnector:
             while not self.message_available:
                 if not self.is_connected:
                     return ""
-                
+
                 if not self.message_available and process_return_only:
                     sleep(0.01)
                 else:
@@ -189,53 +189,43 @@ class LoadContainerHandler:
         #! this currently drops support for loading unmanaged containers
         # decode event contents
         event_data: dict = json.loads(self.event.contents())
+        project_name = get_current_project_name()
 
-        # find out which loader type to use for event representation
-        ayon_containers = {"FramesLoader": [], "MovLoader": []}
-        for node in event_data:
-            if not node.get("representation"):
-                raise Exception("event data has no representation. "
-                                f"{event_data = }")
+        representation_ids = [
+            event["representation"] for event in event_data
+            if event.get("representation")
+        ]
+        log.debug(f"representation_ids: {representation_ids}")
+        # convert representation id to entity data
+        repre_entities = get_representations(
+            project_name=project_name,
+            representation_ids=representation_ids
+        )
+        available_loaders = discover_loader_plugins(project_name)
+        frames_loader_plugin = next(loader for loader in available_loaders
+            if loader.__name__ == "FramesLoader")
+        mov_loader_plugin = next(loader for loader in available_loaders
+            if loader.__name__ == "MovLoader")
+        for repre in repre_entities:
+            filepath = get_representation_path(repre)
+            # extension from path
+            extension = os.path.splitext(filepath)[1].lstrip(".")
 
             for ext in IMAGE_EXTENSIONS:
                 ext = ext.lstrip(".")
-                if ext in node["objectName"].lower():
-                    ayon_containers["FramesLoader"].append(node)
+                if ext in extension.lower():
+                    load_container(
+                        frames_loader_plugin,
+                        repre,
+                        project_name=project_name
+                    )
                     break
             for ext in VIDEO_EXTENSIONS:
                 ext = ext.lstrip(".")
-                if ext in node["objectName"].lower():
-                    ayon_containers["MovLoader"].append(node)
+                if ext in extension.lower():
+                    load_container(
+                        mov_loader_plugin,
+                        repre,
+                        project_name=project_name
+                    )
                     break
-
-        # load the container with appropriate loader plugin
-        # this enables us to use AYON manager for versioning
-        if ayon_containers["FramesLoader"]:
-            representation_ids = [i["representation"]
-                                  for i in ayon_containers["FramesLoader"]]
-            log.debug(f"{representation_ids = }")
-            load_representations(representation_ids,
-                                 loader_type="FramesLoader")
-        if ayon_containers["MovLoader"]:
-            representation_ids = [i["representation"]
-                                  for i in ayon_containers["MovLoader"]]
-            log.debug(f"{representation_ids = }")
-            load_representations(representation_ids, loader_type="MovLoader")
-
-
-def load_representations(representation_ids: list[str], loader_type: str):
-    """Load representations into current app session."""
-    project_name = get_current_project_name()
-
-    available_loaders = discover_loader_plugins(project_name)
-    if not loader_type:
-        raise ValueError("Loader type not provided. "
-                         "Expected 'FramesLoader' or 'MovLoader'.")
-    Loader = next(loader for loader in available_loaders
-                  if loader.__name__ == loader_type)
-
-    representations = get_representations(project_name,
-        representation_ids=representation_ids)
-
-    for representation in representations:
-        load_container(Loader, representation, project_name=project_name)
