@@ -416,7 +416,11 @@ def main(
 
     log.info(f"Preparing package for {ADDON_NAME}-{ADDON_VERSION}")
 
-    if os.path.exists(FRONTEND_ROOT):
+    # check if FRONTEND_ROOT path exists and if inside of the dir is package.json
+    if (
+        os.path.exists(FRONTEND_ROOT)
+        and os.path.exists(os.path.join(FRONTEND_ROOT, "package.json"))
+    ):
         build_frontend()
 
     files_mapping: List[FileMapping] = []
