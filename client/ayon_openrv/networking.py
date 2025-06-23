@@ -43,7 +43,8 @@ class RVConnector:
         """Enters the context manager."""
         start = time()
         while not self.is_connected:
-            if time() - start > self.addon_settings["network"]["timeout"]:
+            timeout = self.addon_settings["network"]["timeout"]
+            if time() - start > float(timeout):
                 raise Exception(f"Timeout reached. Tried with {self.host = } "
                                 f"{self.port =  } {self.name = }")
             self.connect()
