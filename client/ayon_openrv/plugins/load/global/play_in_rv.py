@@ -101,10 +101,7 @@ class PlayInRV(load.LoaderPlugin):
                     project_name, folder_entity["id"], task_name
                 )
 
+        task_name = None
         if task_entity:
-            return project_name, folder_path, task_entity["name"]
-
-        raise LoadError(
-            "Selected representation does not have available task."
-            " It is not possible to start OpenRV."
-        )
+            task_name = task_entity["name"]
+        return project_name, folder_path, task_name
