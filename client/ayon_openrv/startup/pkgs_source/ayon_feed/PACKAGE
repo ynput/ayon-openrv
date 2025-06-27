@@ -1,0 +1,16 @@
+package: ayon_feed
+organization: AYON Team
+author: Jakub (jeza) Jezek
+version: 1.0
+url: https://ayon.ynput.io
+description: |
+    AYON Feed for OpenRV with React frontend
+    integration via QWebEngineView and QWebChannel.
+rv: 3.12
+openrv: 1.0.0
+requires: ''
+optional: true
+
+modes:
+  - file: ayon_feed
+    load: immediate
