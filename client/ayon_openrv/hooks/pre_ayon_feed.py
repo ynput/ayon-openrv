@@ -47,29 +47,8 @@ class PreAYONFeed(PreLaunchHook):
             package_dest = packages_dest_folder / package_name
 
             self.log.debug(f"Writing: {package_dest}")
-            package_res_zip_path = None
-            if is_dev_mode_enabled():
-                # only generating path and adding it into env var
-                addon_repo_root = Path(
-                    __file__).resolve().parent.parent.parent.parent
-                fe_root = addon_repo_root / "frontend"
-                for subpath_pair in FRONTEND_CLIENT_SUBFOLDERS:
-                    if package_name not in subpath_pair[1]:
-                        continue
-                    fe_subpath_root_path = fe_root / subpath_pair[1]
-                    fe_build_path = fe_subpath_root_path / "build"
-                    env_key = subpath_pair[0] + "_OPENRV_FRONTEND"
-                    self.launch_context.env[env_key] = fe_build_path
-                    self.log.debug(f"Setting {env_key}: {fe_build_path}")
-            else:
-                shutil.make_archive(str(package_dest), "zip", str(package_src))
-                # remove package_name
-                if (
-                    package_res_zip_path
-                    and package_res_zip_path.with_suffix(".zip").exists()
-                ):
-                    # remove the zip file
-                    package_res_zip_path.with_suffix(".zip").unlink()
+            shutil.make_archive(str(package_dest), "zip", str(package_src))
+
 
         # Install and opt-in the AYON RV packages
         install_args = [rvpkg, "-only", ay_support_path, "-install", "-force"]
@@ -88,21 +67,3 @@ class PreAYONFeed(PreLaunchHook):
             support_path = str(ay_support_path)
         self.log.debug(f"Setting RV_SUPPORT_PATH: {support_path}")
         self.launch_context.env["RV_SUPPORT_PATH"] = support_path
-
-
-def _get_yarn_executable():
-    cmd = "which"
-    if platform.system().lower() == "windows":
-        cmd = "where"
-
-    for line in subprocess.check_output(
-        [cmd, "yarn"], encoding="utf-8"
-    ).splitlines():
-        if not line or not Path(line).exists():
-            continue
-        try:
-            subprocess.call([line, "--version"])
-            return line
-        except OSError:
-            continue
-    return None

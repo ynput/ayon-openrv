@@ -1,15 +1,13 @@
 import logging
 import os
+import sys
 from pathlib import Path
-import zipfile
-import tempfile
 
 import rv.commands
 import rv.qtutils
 from PySide2 import QtCore, QtWidgets, QtWebEngineWidgets, QtWebChannel
 
 from rv.rvtypes import MinorMode
-from ayon_core.lib import is_dev_mode_enabled
 from ayon_openrv.constants import AYON_ATTR_PREFIX
 
 import ayon_api
@@ -19,250 +17,6 @@ from proxy_server import start_proxy_server
 LOG_LEVEL = logging.DEBUG
 
 
-class PyBridge(QtCore.QObject):
-    """Python bridge object for QWebChannel communication."""
-
-    # Change from dict to individual parameters for better QWebChannel serialization
-    frameChanged = QtCore.Signal(int, str, str, str)
-
-    def __init__(self):
-        super().__init__()
-        self.log = logging.getLogger("PyBridge")
-        self.log.setLevel(LOG_LEVEL)
-        self.current_project = None
-        self.current_version_id = None
-        self.con = None
-        try:
-            self.con = ayon_api.get_server_api_connection()
-        except Exception as e:
-            self.log.warning(f"Failed to get AYON API connection: {e}")
-
-    @QtCore.Slot(result=int)
-    def getCurrentFrame(self):
-        """Get current frame number."""
-
-        try:
-            current_frame = rv.commands.frame()
-            return current_frame
-        except Exception as e:
-            self.log.error(f"Failed to get current frame: {e}")
-            return 0
-
-    @QtCore.Slot(result=str)
-    def getProjectName(self):
-        """Get current project name."""
-        try:
-            # Try to get from current source attributes
-            current_frame = rv.commands.frame()
-            sources = rv.commands.sourcesAtFrame(current_frame)
-            if sources:
-                current_node = sources[0]
-                project_attr = f"{current_node}.{AYON_ATTR_PREFIX}projectName"
-                if rv.commands.propertyExists(project_attr):
-                    project_name = rv.commands.getStringProperty(project_attr)[0]
-                    self.current_project = project_name
-                    self.log.info(f"Captured project name: {self.current_project}")
-                    return project_name
-
-            # Fallback to environment variable
-            project_name = os.environ.get('AYON_PROJECT_NAME', '')
-            self.current_project = project_name
-            self.log.info(f"Env project name: {self.current_project}")
-            return project_name
-        except Exception as e:
-            self.log.error(f"Failed to get project name: {e}")
-            return ''
-
-    @QtCore.Slot(result=str)
-    def getVersionId(self):
-        """Get current project name."""
-        try:
-            # Try to get from current source attributes
-            current_frame = rv.commands.frame()
-            sources = rv.commands.sourcesAtFrame(current_frame)
-            if sources:
-                current_node = sources[0]
-                version_attr = f"{current_node}.{AYON_ATTR_PREFIX}versionId"
-                if rv.commands.propertyExists(version_attr):
-                    version_id = rv.commands.getStringProperty(version_attr)[0]
-                    self.current_version_id = version_id
-                    self.log.info(f"Captured version id: {self.current_version_id}")
-                    return version_id
-
-        except Exception as e:
-            self.log.error(f"Failed to get version id: {e}")
-            return ''
-
-    @QtCore.Slot(result=str)
-    def getUserName(self):
-        """Get current user name."""
-        try:
-            # Try to get from AYON API connection
-            if hasattr(self, 'con') and self.con:
-                user_info = self.con.get_user()
-                if user_info and 'name' in user_info:
-                    return user_info['name']
-
-            # Fallback to environment variable
-            return os.environ.get('AYON_USER_NAME', os.environ.get('USER', 'unknown'))
-        except Exception as e:
-            self.log.error(f"Failed to get user name: {e}")
-            return 'unknown'
-
-    @QtCore.Slot(result=dict)
-    def onFrameChanged(self):
-        """Register callback for frame changes.
-
-        Placeholder for JS callback registration.
-        """
-        # This is handled by the frameChanged signal in QWebChannel
-        # The React app will connect to this signal automatically
-        current_frame = self.getCurrentFrame()
-        project_name = self.getProjectName()
-        version_id = self.getVersionId()
-        user_name = self.getUserName()
-
-        # Log the data for debugging
-        context_data = {
-            'currentFrame': current_frame,
-            'projectName': project_name,
-            'versionId': version_id,
-            'userName': user_name,
-        }
-        self.log.info(f"Frame changed: {context_data}")
-
-        # Emit signal with individual parameters instead of a dictionary
-        # Order: currentFrame, projectName, versionId, userName
-        self.frameChanged.emit(current_frame, project_name, version_id, user_name)
-
-
-    @QtCore.Slot(str)
-    def addAnnotation(self, text):
-        """Add annotation to current frame and submit to AYON."""
-        try:
-            current_frame = rv.commands.frame()
-
-            # Get current source
-            sources = rv.commands.sourcesAtFrame(current_frame)
-            current_node = (
-                sources[0] if sources and len(sources) > 0 else None)
-            if not current_node:
-                self.log.warning("No sources available for annotation")
-                return
-
-            # Generate thumbnail for the annotation
-            thumbnail_path = self._generate_frame_thumbnail(current_frame)
-
-            # Create annotation data
-            annotation_data = {
-                'frame': current_frame,
-                'text': text,
-                'thumbnail': thumbnail_path,
-                'timestamp': rv.commands.frame() / rv.commands.fps()
-            }
-
-            # Store annotation locally on source node
-            local_attr_name = f"{AYON_ATTR_PREFIX}annotations"
-            try:
-                existing_annotations = rv.commands.getStringProperty(f"{current_node}.{local_attr_name}")
-                annotations_list = eval(existing_annotations[0]) if existing_annotations else []
-            except:
-                annotations_list = []
-
-            annotations_list.append(annotation_data)
-            rv.commands.setStringProperty(
-                f"{current_node}.{local_attr_name}",
-                [str(annotations_list)],
-                True  # persistent
-            )
-
-            # Submit to AYON server (placeholder for actual API call)
-            ayon_activity_id = self._submit_to_ayon_feed(annotation_data)
-
-            if ayon_activity_id:
-                # Store AYON activity ID as attribute
-                ayon_id_attr = f"{AYON_ATTR_PREFIX}activity_id_{current_frame}"
-                rv.commands.setStringProperty(
-                    f"{current_node}.{ayon_id_attr}",
-                    [ayon_activity_id],
-                    True
-                )
-
-            self.log.info(f"Added annotation for frame {current_frame}: {text}")
-
-        except Exception as e:
-            self.log.error(f"Failed to add annotation: {e}")
-
-    def _generate_frame_thumbnail(self, frame):
-        """Generate thumbnail for the current frame."""
-        try:
-            temp_dir = Path(tempfile.mkdtemp(prefix="ayon_rv_thumb_"))
-            thumbnail_path = temp_dir / f"frame_{frame}.jpg"
-
-            # Save current frame as thumbnail using RV API
-            current_frame = rv.commands.frame()
-            rv.commands.setFrame(frame)
-
-            # Export current frame as image
-            rv.commands.writeImage(str(thumbnail_path), frame)
-
-            # Restore original frame
-            rv.commands.setFrame(current_frame)
-
-            return str(thumbnail_path)
-        except Exception as e:
-            self.log.error(f"Failed to generate thumbnail: {e}")
-            return None
-
-    def _submit_to_ayon_feed(self, annotation_data):
-        """Submit annotation to AYON server feed."""
-        try:
-            # Get AYON server credentials from environment
-            server_url = os.environ.get('AYON_SERVER_URL')
-            api_key = os.environ.get('AYON_API_KEY')
-
-            if not server_url or not api_key:
-                self.log.warning("AYON server credentials not found in environment")
-                return None
-
-            # Import ayon_api for server communication
-            try:
-                import ayon_api
-            except ImportError:
-                self.log.error("ayon_api not available for server communication")
-                return None
-
-            # Create activity data for AYON feed
-            activity_data = {
-                'activityType': 'comment',
-                'body': annotation_data['text'],
-                'data': {
-                    'frame': annotation_data['frame'],
-                    'timestamp': annotation_data['timestamp'],
-                    'thumbnail': annotation_data.get('thumbnail')
-                }
-            }
-
-            # Submit to AYON server using ayon_api
-            if self.current_version_id:
-                response = ayon_api.post(
-                    f"projects/{self.current_project}/versions/{self.current_version_id}/activities",
-                    **activity_data
-                )
-
-                if response and 'id' in response:
-                    activity_id = response['id']
-                    self.log.info(f"Submitted annotation to AYON: {activity_id}")
-                    return activity_id
-            else:
-                self.log.warning("No entity or version context available for annotation submission")
-                return None
-
-        except Exception as e:
-            self.log.error(f"Failed to submit to AYON feed: {e}")
-            return None
-
-
 class AYONFeed(QtWidgets.QWidget):
     """Feed widget containing QWebEngineView with React frontend."""
 
@@ -270,10 +24,19 @@ class AYONFeed(QtWidgets.QWidget):
         super().__init__(parent)
         self.log = logging.getLogger("AYONFeed")
         self.log.setLevel(LOG_LEVEL)
-        self.bridge = PyBridge()
         self.con = ayon_api.get_server_api_connection()
         self.local_server = None
         self.server_port = None
+
+        if fe_bridge_path := os.getenv("AYON_FEED_FRONTEND_PYTHON"):
+            self.log.info(f"Using frontend bridge from {fe_bridge_path}")
+            sys.path.append(fe_bridge_path)
+            from ayon_feed_frontend_bridge import AYONFeedFrontendBridge
+            self.bridge = AYONFeedFrontendBridge()
+        else:
+            from frontend_bridge import PyBridge
+            self.bridge = PyBridge()
+
 
         self.setup_ui()
         self.setup_webchannel()
