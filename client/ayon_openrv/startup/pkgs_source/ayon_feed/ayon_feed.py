@@ -5,7 +5,7 @@ from pathlib import Path
 
 import rv.commands
 import rv.qtutils
-from PySide2 import QtCore, QtWidgets, QtWebEngineWidgets, QtWebChannel
+from qtpy import QtCore, QtWidgets, QtWebEngineWidgets, QtWebChannel
 
 from rv.rvtypes import MinorMode
 from ayon_openrv.constants import AYON_ATTR_PREFIX
@@ -19,6 +19,7 @@ LOG_LEVEL = logging.DEBUG
 
 class AYONFeed(QtWidgets.QWidget):
     """Feed widget containing QWebEngineView with React frontend."""
+    bridge = None
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -245,6 +246,11 @@ class AYONFeedMode(MinorMode):
                 self.on_frame_changed,
                 "Update feed on frame change"
             ),
+            (
+                "graph-state-change",
+                self._graph_state_change,
+                "Handle annotation creation"
+            ),
         ]
 
         menu = [
@@ -265,6 +271,48 @@ class AYONFeedMode(MinorMode):
         )
 
         self.log.info("AYON Feed mode initialized")
+
+    def get_view_source(self):
+        try:
+            sources = rv.commands.sourcesAtFrame(rv.commands.frame())
+            current_loaded_viewnode = (
+                sources[0] if sources and len(sources) > 0 else None)
+        except Exception as e:
+            self.log.error(f"Error getting sources: {e}")
+        return current_loaded_viewnode
+
+    def _graph_state_change(self, event):
+        node = self.get_view_source()
+        content = event.contents()
+
+        # make sure we have the content and it is in the expected format
+        # and that the panel widget is initialized
+        if (
+            not content
+            or ":" not in content
+            or ".pen:" not in content
+            or self.panel_widget is None
+            or "bridge" not in dir(self.panel_widget)
+            or not hasattr(
+                self.panel_widget.bridge, "generateAnnotationThumbnail")
+        ):
+            return
+
+        current_attributes = dict(rv.commands.getCurrentAttributes())
+        frame_number = rv.commands.frame()
+        current_frame = current_attributes.get("SourceFrame", frame_number)
+
+        self.log.debug(
+            f"_graph_state_change: "
+            f"node={node} "
+            f"| event={event.name()} "
+            f"| {content} "
+            f"| current_frame={current_frame} "
+        )
+
+        # Extract the annotation type and content
+        self.panel_widget.bridge.generateAnnotationThumbnail(current_frame)
+
 
     def show_ayon_feed(self, arg1=None, arg2=None):
         """Show the feed in a dockable widget."""
