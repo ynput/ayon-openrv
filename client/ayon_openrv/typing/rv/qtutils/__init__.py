@@ -1,7 +1,7 @@
 """Type hints for rv.qtutils module."""
 
 from typing import Any, Optional
-from PySide2 import QtWidgets
+from qtpy import QtWidgets
 
 
 def sessionWindow() -> QtWidgets.QMainWindow:

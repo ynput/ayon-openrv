@@ -7,7 +7,7 @@ import rv.commands
 import rv.qtutils
 
 from ayon_openrv.constants import AYON_ATTR_PREFIX
-from PySide2 import QtCore, QtGui, QtWidgets
+from qtpy import QtCore, QtGui, QtWidgets
 from rv.rvtypes import MinorMode
 
 
@@ -212,7 +212,7 @@ class ReviewMenu(MinorMode):
         else:
             return rv.commands.UncheckedMenuState
 
-    def set_item_font(self, item, size=14, noweight=False, bold=True):
+    def set_item_font(self, item, size=14, bold=True):
         font = QtGui.QFont()
         if bold:
             font.setFamily("Arial Bold")
@@ -220,8 +220,6 @@ class ReviewMenu(MinorMode):
             font.setFamily("Arial")
         font.setPointSize(size)
         font.setBold(True)
-        if not noweight:
-            font.setWeight(75)
         item.setFont(font)
 
     def on_frame_changed(self, event=None):
