@@ -23,8 +23,10 @@ class ReverseProxyHandler(http.server.BaseHTTPRequestHandler):
 
     def _set_cors_headers(self):
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        self.send_header(
+            "Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE")
+        self.send_header(
+            "Access-Control-Allow-Headers", "Content-Type, Authorization")
 
     def do_OPTIONS(self):
         self.send_response(204)
@@ -47,28 +49,41 @@ class ReverseProxyHandler(http.server.BaseHTTPRequestHandler):
         else:
             # Just hostname provided, assume HTTPS
             # Extract host from URL-like string
-            cleaned_host = self.target_host.replace("https://", "").replace("http://", "")
+            cleaned_host = self.target_host.replace(
+                "https://", "").replace("http://", "")
             if "/" in cleaned_host:
                 target_host = cleaned_host.split("/")[0]
             else:
                 target_host = cleaned_host
             target_scheme = "https" if "https" in self.target_host else "http"
 
-        logger.debug(f"Parsed target: scheme={target_scheme}, host={target_host}")
+        logger.debug(
+            f"Parsed target: scheme={target_scheme}, host={target_host}")
 
         path = self.path
 
         # Don't strip the proxy path prefix - keep the full path
-        # The AYON server expects the full API paths like /api/info, /api/projects, etc.
+        # The AYON server expects the full API paths like /api/info,
+        # /api/projects, etc.
 
         # Log proxy request details
-        logger.debug(f"Proxying {self.command} request to {target_scheme}://{target_host}{path}")
-        logger.debug(f"Target host: {target_host}, Target scheme: {target_scheme}")
+        logger.debug(
+            f"Proxying {self.command} request "
+            f"to {target_scheme}://{target_host}{path}")
+        logger.debug(
+            f"Target host: {target_host}, Target scheme: {target_scheme}")
 
         # Forward request to target server
-        conn_class = http.client.HTTPSConnection if target_scheme == "https" else http.client.HTTPConnection
+        conn_class = (
+            http.client.HTTPSConnection
+            if target_scheme == "https"
+            else http.client.HTTPConnection
+        )
         conn = conn_class(target_host)
-        headers = {k: v for k, v in self.headers.items() if k.lower() not in ['host', 'connection']}
+        headers = {
+            k: v for k, v in self.headers.items()
+            if k.lower() not in ['host', 'connection']
+        }
         headers["Host"] = target_host
         headers["Connection"] = "close"
 
@@ -80,9 +95,14 @@ class ReverseProxyHandler(http.server.BaseHTTPRequestHandler):
         # Add authentication headers if configured
         if self.auth_headers:
             headers.update(self.auth_headers)
-            logger.debug(f"Added auth headers: {list(self.auth_headers.keys())}")
+            logger.debug(
+                f"Added auth headers: {list(self.auth_headers.keys())}")
             for key, value in self.auth_headers.items():
-                logger.debug(f"Auth header {key}: {value[:20]}..." if len(value) > 20 else f"Auth header {key}: {value}")
+                logger.debug(
+                    f"Auth header {key}: {value[:20]}..."
+                    if len(value) > 20
+                    else f"Auth header {key}: {value}"
+                )
 
         body = None
         if self.command in ["POST", "PUT", "PATCH"]:
@@ -91,7 +111,10 @@ class ReverseProxyHandler(http.server.BaseHTTPRequestHandler):
             logger.debug(f"Request body length: {content_length}")
 
         try:
-            logger.debug(f"Sending {self.command} request with headers: {dict(headers)}")
+            logger.debug(
+                f"Sending {self.command} request "
+                f"with headers: {dict(headers)}"
+            )
             conn.request(self.command, path, body=body, headers=headers)
             res = conn.getresponse()
 
@@ -100,7 +123,12 @@ class ReverseProxyHandler(http.server.BaseHTTPRequestHandler):
             # Read the full response body first to log it
             response_body = res.read()
             logger.debug(f"Response body length: {len(response_body)}")
-            logger.debug(f"Response body preview: {response_body[:500].decode('utf-8', errors='replace') if response_body else 'Empty'}")
+            preview_body_text =(
+               response_body[:500].decode('utf-8', errors='replace')
+               if response_body else 'Empty'
+            )
+            logger.debug(
+                f"Response body preview: {preview_body_text}")
 
             # Log response headers for debugging authentication issues
             logger.debug("Response headers:")
@@ -111,7 +139,9 @@ class ReverseProxyHandler(http.server.BaseHTTPRequestHandler):
 
             # Copy headers (excluding hop-by-hop headers)
             for header, value in res.getheaders():
-                if header.lower() not in ["connection", "transfer-encoding", "keep-alive"]:
+                if header.lower() not in [
+                    "connection", "transfer-encoding", "keep-alive"
+                ]:
                     self.send_header(header, value)
             self._set_cors_headers()
             self.end_headers()
@@ -120,7 +150,8 @@ class ReverseProxyHandler(http.server.BaseHTTPRequestHandler):
             if response_body:
                 self.wfile.write(response_body)
             else:
-                logger.warning(f"Empty response body for {self.command} {path}")
+                logger.warning(
+                    f"Empty response body for {self.command} {path}")
         except Exception as e:
             logger.error(f"Error during proxy request: {e}", exc_info=True)
             self.send_error(502, f"Bad Gateway: {str(e)}")
@@ -134,7 +165,11 @@ class ReverseProxyHandler(http.server.BaseHTTPRequestHandler):
             path = "/index.html"
 
         # Security check: detect path traversal attempts
-        if ".." in path or path.startswith("/etc/") or path.startswith("\\etc\\"):
+        if (
+            ".." in path
+            or path.startswith("/etc/")
+            or path.startswith("\\etc\\")
+        ):
             self.send_error(403, "Forbidden")
             return
 
@@ -142,7 +177,8 @@ class ReverseProxyHandler(http.server.BaseHTTPRequestHandler):
         requested_path = Path(path.lstrip("/"))
         filepath = (self.serve_directory / requested_path).resolve()
 
-        # Additional security check: ensure the resolved path is within serve_directory
+        # Additional security check: ensure the resolved path is within
+        # serve_directory
         try:
             filepath.relative_to(self.serve_directory.resolve())
         except ValueError:
@@ -166,7 +202,8 @@ class ReverseProxyHandler(http.server.BaseHTTPRequestHandler):
             '.ico': 'image/x-icon'
         }
 
-        content_type = content_type_map.get(filepath.suffix.lower(), 'text/plain')
+        content_type = content_type_map.get(
+            filepath.suffix.lower(), 'text/plain')
 
         self.send_response(200)
         self.send_header("Content-Type", content_type)
@@ -181,7 +218,13 @@ class ReverseProxyHandler(http.server.BaseHTTPRequestHandler):
         path_only = self.path.split('?')[0]
 
         # Check if path should be proxied
-        if self.proxy_paths and any(path_only.startswith(proxy_path) for proxy_path in self.proxy_paths):
+        if (
+            self.proxy_paths
+            and any(
+                path_only.startswith(proxy_path)
+                for proxy_path in self.proxy_paths
+            )
+        ):
             self._proxy_request()
         else:
             self._serve_local_file()
@@ -230,7 +273,8 @@ class ProxyServer:
     def start(self, daemon=True):
         """Start the server in a separate thread."""
         handler_class = self.create_handler()
-        self.server = socketserver.TCPServer((self.host, self.port), handler_class)
+        self.server = socketserver.TCPServer(
+            (self.host, self.port), handler_class)
 
         def run():
             print(f"Serving on http://{self.host}:{self.port}")
@@ -249,18 +293,28 @@ class ProxyServer:
             self.server_thread.join()
 
 
-def start_proxy_server(host="localhost", port=8000, serve_directory=None,
-                      proxy_paths=None, target_host=None, auth_headers=None, daemon=True):
+def start_proxy_server(
+    host="localhost",
+    port=8000,
+    serve_directory=None,
+    proxy_paths=None,
+    target_host=None,
+    auth_headers=None,
+    daemon=True,
+):
     """
     Start a reverse proxy server with the given configuration.
 
     Args:
         host: The hostname to bind to (default: "localhost")
         port: The port to bind to (default: 8000)
-        serve_directory: Directory to serve files from (default: current directory)
+        serve_directory: Directory to serve files from
+            (default: current directory)
         proxy_paths: List of paths to proxy (e.g., ["/api", "/graphql"])
-        target_host: Target host for proxied requests (e.g., "https://api.example.com" or "http://localhost:5000")
-        auth_headers: Dictionary of authentication headers to add to proxy requests (e.g., {"Authorization": "Bearer token"})
+        target_host: Target host for proxied requests
+            (e.g., "https://api.example.com" or "http://localhost:5000")
+        auth_headers: Dictionary of authentication headers to add to proxy
+            requests (e.g., {"Authorization": "Bearer token"})
         daemon: Whether to run the server thread as a daemon (default: True)
 
     Returns:
@@ -281,8 +335,8 @@ if __name__ == "__main__":
         port=8080,
         serve_directory=Path.cwd(),
         proxy_paths=["/api", "/graphql"],
-        target_host="https://jsonplaceholder.typicode.com",  # Example API for testing
-        daemon=False
+        target_host="https://jsonplaceholder.typicode.com",
+        daemon=False,
     )
 
     print("\nReverse proxy server is running...")
