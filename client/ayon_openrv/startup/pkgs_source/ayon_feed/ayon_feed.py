@@ -32,7 +32,7 @@ class AYONFeed(QtWidgets.QWidget):
         if fe_bridge_path := os.getenv("AYON_FEED_FRONTEND_PYTHON"):
             self.log.info(f"Using frontend bridge from {fe_bridge_path}")
             sys.path.append(fe_bridge_path)
-            from ayon_feed_frontend_bridge import AYONFeedFrontendBridge
+            from ayon_feed_frontend_bridge_openrv import AYONFeedFrontendBridge
             self.bridge = AYONFeedFrontendBridge()
         else:
             from frontend_bridge import PyBridge
