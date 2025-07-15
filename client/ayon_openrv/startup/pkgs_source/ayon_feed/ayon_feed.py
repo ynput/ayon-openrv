@@ -8,7 +8,6 @@ import rv.qtutils
 from qtpy import QtCore, QtWidgets, QtWebEngineWidgets, QtWebChannel
 
 from rv.rvtypes import MinorMode
-from ayon_openrv.constants import AYON_ATTR_PREFIX
 
 import ayon_api
 from proxy_server import start_proxy_server

@@ -1,15 +1,11 @@
-from logging import Logger
 import os
 import shutil
 import tempfile
 from pathlib import Path
-import platform
-import subprocess
 
 from ayon_openrv.constants import OPENRV_ROOT_DIR
 from ayon_applications import PreLaunchHook
 from ayon_core.lib.execute import run_subprocess
-from ayon_core.lib import is_dev_mode_enabled
 
 
 FRONTEND_CLIENT_SUBFOLDERS = [

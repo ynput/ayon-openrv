@@ -4,12 +4,9 @@ from pathlib import Path
 import tempfile
 
 import rv.commands
-import rv.qtutils
-from PySide2 import QtCore
+from qtpy import QtCore
 
 from ayon_openrv.constants import AYON_ATTR_PREFIX
-
-import ayon_api
 
 
 LOG_LEVEL = logging.DEBUG
@@ -57,7 +54,7 @@ class PyBridge(QtCore.QObject):
             try:
                 existing_annotations = rv.commands.getStringProperty(f"{current_node}.{local_attr_name}")
                 annotations_list = eval(existing_annotations[0]) if existing_annotations else []
-            except:
+            except Exception:
                 annotations_list = []
 
             annotations_list.append(annotation_data)

@@ -3,7 +3,6 @@ import socketserver
 import threading
 import urllib.parse
 import http.client
-import re
 import logging
 from pathlib import Path
 
