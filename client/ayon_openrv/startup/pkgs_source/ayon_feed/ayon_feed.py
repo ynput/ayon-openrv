@@ -216,9 +216,16 @@ class AYONFeed(QtWidgets.QWidget):
         </html>
         """
         self.web_view.setHtml(html_content)
-        self.log.warning("Using fallback HTML content - React frontend not available")
+        self.log.warning(
+            "Using fallback HTML content - React frontend not available")
 
     def update_frame(self):
+        """Update current frame in the bridge."""
+        # Use QTimer to defer the frame query slightly to ensure
+        # RV state is updated
+        QtCore.QTimer.singleShot(10, self._delayed_frame_update)
+
+    def _delayed_frame_update(self):
         """Update current frame in the bridge."""
         try:
             current_frame = rv.commands.frame()
