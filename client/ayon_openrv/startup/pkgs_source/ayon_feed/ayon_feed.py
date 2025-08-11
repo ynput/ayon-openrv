@@ -1,17 +1,15 @@
 import logging
 import os
 import sys
+import tempfile
 from pathlib import Path
 
+import ayon_api
 import rv.commands
 import rv.qtutils
-from qtpy import QtCore, QtWidgets, QtWebEngineWidgets, QtWebChannel
-
-from rv.rvtypes import MinorMode
-
-import ayon_api
 from proxy_server import start_proxy_server
-
+from qtpy import QtCore, QtWebChannel, QtWebEngineWidgets, QtWidgets
+from rv.rvtypes import MinorMode
 
 LOG_LEVEL = logging.DEBUG
 
@@ -19,6 +17,7 @@ LOG_LEVEL = logging.DEBUG
 class AYONFeed(QtWidgets.QWidget):
     """Feed widget containing QWebEngineView with React frontend."""
     bridge = None
+    temp_dir = None
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -41,6 +40,18 @@ class AYONFeed(QtWidgets.QWidget):
         self.setup_ui()
         self.setup_webchannel()
         self.load_frontend()
+        self.prepare_temp_dir()
+
+    def prepare_temp_dir(self):
+        """Prepare temporary directory for thumbnails."""
+        if self.temp_dir:
+            self.log.info("Temporary directory already exists")
+            return
+        # Create a temporary directory for storing thumbnails
+        temp_dir = Path(tempfile.mkdtemp(prefix="ayon_rv_thumb_"))
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        self.log.info(f"Temporary directory created: {temp_dir}")
+        self.temp_dir = temp_dir.as_posix()
 
     def setup_ui(self):
         """Setup the widget UI with QWebEngineView."""
@@ -105,7 +116,7 @@ class AYONFeed(QtWidgets.QWidget):
                         proxy_paths=["/api", "/graphql"],  # Configure proxy paths if needed
                         target_host=target_host,  # Set to actual API server if needed
                         auth_headers=auth_headers,  # Pass authentication headers
-                        daemon=True
+                        daemon=True,
                     )
 
                     # Get the actual port from the server
@@ -234,6 +245,24 @@ class AYONFeed(QtWidgets.QWidget):
         except Exception as e:
             self.log.error(f"Failed to initialize frame: {e}")
 
+    def annotation_request(self):
+        """Update current frame in the bridge."""
+        """Send signal to generate annotation frame."""
+        try:
+            current_frame = rv.commands.frame()
+            # TODO:
+            #   - generate temp dir for thumbnails during bridge initialization
+            #   - create file name from current source name and frame number
+            self.bridge.onAnnotationChange(
+                current_frame=current_frame,
+                temp_dir_path=self.temp_dir,
+                img_name="test_image.png",
+            )
+            self.log.info(f"Annotation generated {current_frame}")
+        except Exception as e:
+            self.log.error(f"Failed to initialize frame: {e}")
+
+
 
 class AYONFeedMode(MinorMode):
     """MinorMode for AYON feed integration."""
@@ -250,20 +279,20 @@ class AYONFeedMode(MinorMode):
             (
                 "frame-changed",
                 self.on_frame_changed,
-                "Update feed on frame change"
+                "Update feed on frame change",
             ),
             (
                 "graph-state-change",
-                self._graph_state_change,
-                "Handle annotation creation"
+                self.on_graph_state_change,
+                "Handle annotation creation",
             ),
         ]
 
         menu = [
             ("AYON", [
                 ("_", None),
-                ("Feed", self.show_ayon_feed, None, None)
-            ])
+                ("Feed", self.show_ayon_feed, None, None),
+            ]),
         ]
 
         self.init(
@@ -287,7 +316,7 @@ class AYONFeedMode(MinorMode):
             self.log.error(f"Error getting sources: {e}")
         return current_loaded_viewnode
 
-    def _graph_state_change(self, event):
+    def on_graph_state_change(self, event=None):
         node = self.get_view_source()
         content = event.contents()
 
@@ -313,11 +342,21 @@ class AYONFeedMode(MinorMode):
             f"node={node} "
             f"| event={event.name()} "
             f"| {content} "
-            f"| current_frame={current_frame} "
+            f"| current_frame={current_frame} ",
         )
 
-        # Extract the annotation type and content
-        self.panel_widget.bridge.generateAnnotationThumbnail(current_frame)
+        # self.log.debug(
+        #     f">>>>>> AYON Feed: "
+        #     f"{self.panel_widget}"
+        # )
+        # if self.panel_widget:
+        #     try:
+        #         self.panel_widget.annotation_request()
+        #     except Exception as e:
+        #         self.log.error(
+        #             "Failed to send request for annotation frame "
+        #             f"in AYON Feed: {e}",
+        #         )
 
 
     def show_ayon_feed(self, arg1=None, arg2=None):
@@ -336,7 +375,7 @@ class AYONFeedMode(MinorMode):
                 self.dock_widget.setFeatures(
                     QtWidgets.QDockWidget.DockWidgetMovable |
                     QtWidgets.QDockWidget.DockWidgetFloatable |
-                    QtWidgets.QDockWidget.DockWidgetClosable
+                    QtWidgets.QDockWidget.DockWidgetClosable,
                 )
 
                 # Add to main window
@@ -361,7 +400,6 @@ class AYONFeedMode(MinorMode):
                 self.panel_widget.update_frame()
             except Exception as e:
                 self.log.error(f"Failed to update frame in AYON Feed: {e}")
-
 
 def createMode():
     """Create and return the minor mode instance."""
