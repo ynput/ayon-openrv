@@ -2,6 +2,8 @@ import logging
 import os
 import sys
 import tempfile
+import time
+from collections import OrderedDict
 from pathlib import Path
 
 import ayon_api
@@ -246,22 +248,28 @@ class AYONFeed(QtWidgets.QWidget):
             self.log.error(f"Failed to initialize frame: {e}")
 
     def annotation_request(self):
-        """Update current frame in the bridge."""
         """Send signal to generate annotation frame."""
         try:
-            current_frame = rv.commands.frame()
-            # TODO:
-            #   - generate temp dir for thumbnails during bridge initialization
-            #   - create file name from current source name and frame number
+            current_attributes = OrderedDict(rv.commands.getCurrentAttributes())
+            frame_number = rv.commands.frame()
+            current_frame = current_attributes.get("SourceFrame", frame_number)
+            current_file_path = Path(current_attributes.get("File", "Image.png"))
+
+            current_frame_name = current_file_path.stem
+            if str(current_frame) not in current_frame_name:
+                current_frame_name = (
+                    f"{current_frame_name}.{current_frame}.jpg")
+            else:
+                current_frame_name = f"{current_frame_name}.jpg"
+
             self.bridge.onAnnotationChange(
                 current_frame=current_frame,
                 temp_dir_path=self.temp_dir,
-                img_name="test_image.png",
+                file_name=current_frame_name,
             )
             self.log.info(f"Annotation generated {current_frame}")
         except Exception as e:
             self.log.error(f"Failed to initialize frame: {e}")
-
 
 
 class AYONFeedMode(MinorMode):
@@ -274,6 +282,11 @@ class AYONFeedMode(MinorMode):
         self.log.setLevel(LOG_LEVEL)
         self.panel_widget = None
         self.dock_widget = None
+
+        # State tracking for annotation drawing
+        self.is_annotating = False
+        self.annotation_timer = None
+        self.last_annotation_event_time = 0
 
         bindings = [
             (
@@ -317,11 +330,11 @@ class AYONFeedMode(MinorMode):
         return current_loaded_viewnode
 
     def on_graph_state_change(self, event=None):
+        """Track annotation changes and generate thumbnail on completion."""
         node = self.get_view_source()
-        content = event.contents()
+        content = event.contents() if event else ""
 
-        # make sure we have the content and it is in the expected format
-        # and that the panel widget is initialized
+        # Check if this is a pen/annotation event
         if (
             not content
             or ":" not in content
@@ -333,27 +346,39 @@ class AYONFeedMode(MinorMode):
         ):
             return
 
-        current_attributes = dict(rv.commands.getCurrentAttributes())
-        frame_number = rv.commands.frame()
-        current_frame = current_attributes.get("SourceFrame", frame_number)
+        current_time = time.time()
 
-        self.log.debug(
-            f"_graph_state_change: "
-            f"node={node} "
-            f"| event={event.name()} "
-            f"| {content} "
-            f"| current_frame={current_frame} ",
-        )
+        # Track annotation state
+        if not self.is_annotating:
+            self.is_annotating = True
+            self.log.debug("Started annotation")
+
+        self.last_annotation_event_time = current_time
+
+        # Cancel existing timer if present
+        if self.annotation_timer and self.annotation_timer.isActive():
+            self.annotation_timer.stop()
+
+        # Create new timer for debouncing (500ms after last event)
+        self.annotation_timer = QtCore.QTimer()
+        self.annotation_timer.setSingleShot(True)
+        self.annotation_timer.timeout.connect(self.finish_annotation)
+        self.annotation_timer.start(500)  # ms delay
+
+    def finish_annotation(self):
+        """Called when annotation is complete (after debounce)."""
+        self.is_annotating = False
+        self.log.debug("Finishing annotation - generating thumbnail")
 
         if self.panel_widget:
             try:
-                self.panel_widget.annotation_request()
+                # Add small delay to ensure annotation is fully rendered
+                # Use another QTimer for the delay
+                delay_timer = QtCore.QTimer()
+                delay_timer.singleShot(
+                    100, self.panel_widget.annotation_request)
             except Exception as e:
-                self.log.error(
-                    "Failed to send request for annotation frame "
-                    f"in AYON Feed: {e}",
-                )
-
+                self.log.error(f"Failed to generate annotation thumbnail: {e}")
 
     def show_ayon_feed(self, arg1=None, arg2=None):
         """Show the feed in a dockable widget."""
@@ -396,6 +421,7 @@ class AYONFeedMode(MinorMode):
                 self.panel_widget.update_frame()
             except Exception as e:
                 self.log.error(f"Failed to update frame in AYON Feed: {e}")
+
 
 def createMode():
     """Create and return the minor mode instance."""
