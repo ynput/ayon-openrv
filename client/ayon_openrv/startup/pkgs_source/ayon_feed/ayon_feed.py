@@ -329,7 +329,7 @@ class AYONFeedMode(MinorMode):
             or self.panel_widget is None
             or "bridge" not in dir(self.panel_widget)
             or not hasattr(
-                self.panel_widget.bridge, "generateAnnotationThumbnail")
+                self.panel_widget.bridge, "onAnnotationChange")
         ):
             return
 
@@ -345,18 +345,14 @@ class AYONFeedMode(MinorMode):
             f"| current_frame={current_frame} ",
         )
 
-        # self.log.debug(
-        #     f">>>>>> AYON Feed: "
-        #     f"{self.panel_widget}"
-        # )
-        # if self.panel_widget:
-        #     try:
-        #         self.panel_widget.annotation_request()
-        #     except Exception as e:
-        #         self.log.error(
-        #             "Failed to send request for annotation frame "
-        #             f"in AYON Feed: {e}",
-        #         )
+        if self.panel_widget:
+            try:
+                self.panel_widget.annotation_request()
+            except Exception as e:
+                self.log.error(
+                    "Failed to send request for annotation frame "
+                    f"in AYON Feed: {e}",
+                )
 
 
     def show_ayon_feed(self, arg1=None, arg2=None):
