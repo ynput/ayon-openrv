@@ -1,3 +1,5 @@
+import os
+
 import pyblish.api
 
 from ayon_core.lib import version_up
@@ -24,8 +26,34 @@ class IncrementWorkfile(pyblish.api.InstancePlugin):
                 "Skipping incrementing current file because publishing failed."
             )
 
-        scene_path = version_up(instance.context.data["currentFile"])
+        context = instance.context
+        current_filepath = instance.context.data["currentFile"]
         host = registered_host()
-        host.save_workfile(scene_path)
+        try:
+            from ayon_core.pipeline.workfile import save_next_version
+            from ayon_core.host.interfaces import SaveWorkfileOptionalData
 
-        self.log.info("Incremented workfile to: {}".format(scene_path))
+            current_filename = os.path.basename(current_filepath)
+            save_next_version(
+                description=(
+                    f"Incremented by publishing from {current_filename}"
+                ),
+                # Optimize the save by reducing needed queries for context
+                prepared_data=SaveWorkfileOptionalData(
+                    project_entity=context.data["projectEntity"],
+                    project_settings=context.data["project_settings"],
+                    anatomy=context.data["anatomy"],
+                )
+            )
+            new_filepath = host.get_current_workfile()
+
+        except ImportError:
+            # Backwards compatibility before ayon-core 1.5.0
+            self.log.debug(
+                "Using legacy `version_up`. Update AYON core addon to "
+                "use newer `save_next_version` function."
+            )
+            new_filepath = version_up(current_filepath)
+            host.save_workfile(new_filepath)
+
+        self.log.info(f"Incremented workfile to: {new_filepath}")
