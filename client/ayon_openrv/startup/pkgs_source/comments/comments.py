@@ -113,7 +113,7 @@ class ReviewMenu(MinorMode):
             ],
             # initialization order
             sortKey="source_setup",
-            ordering=20,
+            ordering=30,
         )
 
         # spacers
