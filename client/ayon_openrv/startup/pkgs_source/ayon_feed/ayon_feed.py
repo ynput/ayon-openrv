@@ -258,9 +258,9 @@ class AYONFeed(QtWidgets.QWidget):
             current_frame_name = current_file_path.stem
             if str(current_frame) not in current_frame_name:
                 current_frame_name = (
-                    f"{current_frame_name}.{current_frame}.jpg")
+                    f"{current_frame_name}.{current_frame}.png")
             else:
-                current_frame_name = f"{current_frame_name}.jpg"
+                current_frame_name = f"{current_frame_name}.png"
 
             self.bridge.onAnnotationChange(
                 current_frame=current_frame,
