@@ -415,7 +415,6 @@ class AYONFeedMode(MinorMode):
 
     def on_frame_changed(self, event=None):
         """Handle frame change events."""
-        self.log.debug("Feed: Frame changed")
         if self.panel_widget:
             try:
                 self.panel_widget.update_frame()

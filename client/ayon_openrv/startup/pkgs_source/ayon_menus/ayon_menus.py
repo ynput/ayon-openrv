@@ -47,6 +47,23 @@ class AYONMenus(MinorMode):
 
     def __init__(self):
         MinorMode.__init__(self)
+        menu_items = [
+            # Menuitem name, actionHook (event), key, stateHook
+            ("Load...", self.load, None, None),
+            ("Publish...", self.publish, None, None),
+            ("Manage...", self.scene_inventory, None, None),
+            ("Library...", self.library, None, None),
+            ("_", None),  # separator
+            ("Work Files...", self.workfiles, None, None),
+        ]
+        if os.getenv("AYON_RV_NO_MENU") == "1":
+            menu_items = [
+                # Menuitem name, actionHook (event), key, stateHook
+                ("Load...", self.load, None, None),
+                ("Manage...", self.scene_inventory, None, None),
+                ("_", None),
+                ("Work Files...", self.workfiles, None, None),
+            ]
         self.init(
             name="py-ayon",
             globalBindings=None,
@@ -58,15 +75,7 @@ class AYONMenus(MinorMode):
                 # Menu name
                 # NOTE: If it already exists it will merge with existing
                 # and add submenus / menuitems to the existing one
-                ("AYON", [
-                    # Menuitem name, actionHook (event), key, stateHook
-                    ("Load...", self.load, None, None),
-                    ("Publish...", self.publish, None, None),
-                    ("Manage...", self.scene_inventory, None, None),
-                    ("Library...", self.library, None, None),
-                    ("_", None),  # separator
-                    ("Work Files...", self.workfiles, None, None),
-                ])
+                ("AYON", menu_items)
             ],
             # initialization order
             sortKey="source_setup",
@@ -126,13 +135,12 @@ def load_data(dataset=None):
         load_container(Loader, representation)
 
 # only add menu items if AYON_RV_NO_MENU is not set to 1
-if os.getenv("AYON_RV_NO_MENU") != "1":
-    def createMode():
-        # This function triggers for each RV session window being opened, for
-        # example when using File > New Session this will trigger again. As such
-        # we only want to trigger the startup install when the host is not
-        # registered yet.
-        if not registered_host():
-            install_host_in_ayon()
-            data_loader()
-        return AYONMenus()
+def createMode():
+    # This function triggers for each RV session window being opened, for
+    # example when using File > New Session this will trigger again. As such
+    # we only want to trigger the startup install when the host is not
+    # registered yet.
+    if not registered_host():
+        install_host_in_ayon()
+        data_loader()
+    return AYONMenus()
