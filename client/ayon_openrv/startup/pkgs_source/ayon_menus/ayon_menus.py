@@ -56,7 +56,7 @@ class AYONMenus(MinorMode):
             ("_", None),  # separator
             ("Work Files...", self.workfiles, None, None),
         ]
-        if os.getenv("AYON_RV_NO_MENU") == "1":
+        if os.getenv("AYON_REVIEWER_MODE") == "1":
             menu_items = [
                 # Menuitem name, actionHook (event), key, stateHook
                 ("Load...", self.load, None, None),
@@ -68,18 +68,22 @@ class AYONMenus(MinorMode):
             name="py-ayon",
             globalBindings=None,
             overrideBindings=[
-                # event name, callback, description
-                ("ayon_load_container", on_ayon_load_container, "Loads an AYON representation into the session.")
+                # event name, callback, description),
+                (
+                    "ayon_load_container",
+                    on_ayon_load_container,
+                    "Loads an AYON representation into the session.",
+                ),
             ],
             menu=[
                 # Menu name
                 # NOTE: If it already exists it will merge with existing
                 # and add submenus / menuitems to the existing one
-                ("AYON", menu_items)
+                ("AYON", menu_items),
             ],
             # initialization order
             sortKey="source_setup",
-            ordering=15
+            ordering=15,
         )
 
     @property
@@ -105,7 +109,7 @@ class AYONMenus(MinorMode):
 
 def data_loader():
     incoming_data_file = os.environ.get(
-        "AYON_LOADER_REPRESENTATIONS", None
+        "AYON_LOADER_REPRESENTATIONS", None,
     )
     if incoming_data_file:
         with open(incoming_data_file, 'rb') as file:
