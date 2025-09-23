@@ -26,6 +26,10 @@ from ayon_core.lib import Logger
 log = Logger.get_logger(__name__)
 
 
+class FailedToConnectError(Exception):
+    """Raised when failed to connect to RV."""
+
+
 class RVConnector:
     addon_settings = get_addon_settings(OpenRVAddon.name, __version__)
 
@@ -42,12 +46,21 @@ class RVConnector:
     def __enter__(self):
         """Enters the context manager."""
         start = time()
-        while not self.is_connected:
-            timeout = self.addon_settings["network"]["timeout"]
+        timeout = self.addon_settings["network"]["timeout"]
+        while True:
+            if self.is_connected:
+                break
+
             if time() - start > float(timeout):
-                raise Exception(f"Timeout reached. Tried with {self.host = } "
-                                f"{self.port =  } {self.name = }")
+                raise FailedToConnectError(
+                    f"Timeout reached. Tried with {self.host = } "
+                    f"{self.port =  } {self.name = } \n\n"
+                    "Check your RV settings and make sure networking "
+                    "port is aligned with AYON OpenRV settings."
+                )
             self.connect()
+            if not self.is_connected:
+                sleep(0.01)
         return self
 
     def __exit__(self, *args):
