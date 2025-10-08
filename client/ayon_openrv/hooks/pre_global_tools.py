@@ -58,3 +58,17 @@ class PreGlobalTools(PreLaunchHook):
             support_path = str(ay_support_path)
         self.log.debug(f"Setting RV_SUPPORT_PATH: {support_path}")
         self.launch_context.env["RV_SUPPORT_PATH"] = support_path
+
+        # Add ayon_ui_qt to PYTHONPATH so it can be imported directly
+        addon_root = Path(OPENRV_ROOT_DIR).parent  # Go up from client to addon root
+        ayon_ui_qt_path = addon_root / "ayon_ui_qt"
+        
+        if ayon_ui_qt_path.exists():
+            python_path = self.launch_context.env.get("PYTHONPATH", "")
+            if python_path:
+                python_path = os.pathsep.join([str(ayon_ui_qt_path), python_path])
+            else:
+                python_path = str(ayon_ui_qt_path)
+            
+            self.launch_context.env["PYTHONPATH"] = python_path
+            self.log.debug(f"Added ayon_ui_qt to PYTHONPATH: {ayon_ui_qt_path}")

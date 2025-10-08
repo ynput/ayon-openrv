@@ -98,28 +98,20 @@ class AYONMenus(MinorMode):
     def activity_stream(self, event):
         print("Activity Stream clicked")
         
-        # Add the ayon_ui_qt submodule to Python path
-        current_dir = os.path.dirname(__file__)
-        # Navigate to project root: current is in client/ayon_openrv/startup/pkgs_source/ayon_menus
-        root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))))
-        ayon_ui_qt_path = os.path.join(root_dir, "ayon_ui_qt")
-        
-        if os.path.exists(ayon_ui_qt_path) and ayon_ui_qt_path not in sys.path:
-            sys.path.insert(0, ayon_ui_qt_path)
-            print(f"Added ayon_ui_qt to sys.path: {ayon_ui_qt_path}")
-        
         try:
+            # Since ayon_ui_qt is now in PYTHONPATH (set by pre-launch hook),
+            # we can import it directly without any path manipulation
             from ayon_ui_qt.activity_stream import AYActivityStream
             print("Successfully imported AYActivityStream")
+            
             # Create and show the activity stream widget
             activity_widget = AYActivityStream(parent=self._parent)
             activity_widget.show()
             print("Activity Stream widget created and shown")
+            
         except ImportError as e:
             print(f"Failed to import AYActivityStream: {e}")
-            print(f"ayon_ui_qt path exists: {os.path.exists(ayon_ui_qt_path) if 'ayon_ui_qt_path' in locals() else 'path not set'}")
-            if 'ayon_ui_qt_path' in locals() and os.path.exists(ayon_ui_qt_path):
-                print(f"Contents: {os.listdir(ayon_ui_qt_path)}")
+            print("Make sure the pre-launch hook has run and added ayon_ui_qt to PYTHONPATH")
         except Exception as e:
             print(f"Error creating Activity Stream widget: {e}")
 
