@@ -66,6 +66,8 @@ class AYONMenus(MinorMode):
                     ("Library...", self.library, None, None),
                     ("_", None),  # separator
                     ("Work Files...", self.workfiles, None, None),
+                    ("_", None),  # separator
+                    ("Activity Stream...", self.activity_stream, None, None),
                 ])
             ],
             # initialization order
@@ -92,6 +94,25 @@ class AYONMenus(MinorMode):
 
     def library(self, event):
         host_tools.show_library_loader(parent=self._parent)
+
+    def activity_stream(self, event):
+        print("Activity Stream clicked")
+        # Add the ui_qt submodule to Python path
+        current_dir = os.path.dirname(__file__)
+        # Navigate to client directory: current is in pkgs_source/ayon_menus, go up to client
+        client_dir = os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))
+        ui_qt_path = os.path.join(client_dir, "ui_qt")
+        if ui_qt_path not in sys.path:
+            sys.path.insert(0, ui_qt_path)
+        
+        try:
+            from ayon_ui_qt.activity_stream import AYActivityStream
+            # Create and show the activity stream widget
+            activity_widget = AYActivityStream(parent=self._parent)
+            activity_widget.show()
+        except ImportError as e:
+            print(f"Failed to import AYActivityStream: {e}")
+
 
 
 def data_loader():
