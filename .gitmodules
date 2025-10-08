@@ -1,0 +1,4 @@
+[submodule "client/ayon_ui_qt"]
+	path = client/ayon_ui_qt
+	url = https://github.com/ynput/ayon-ui-qt.git
+	branch = feature/prototype
