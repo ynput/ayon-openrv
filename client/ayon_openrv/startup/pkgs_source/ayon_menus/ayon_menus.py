@@ -3,11 +3,10 @@ import json
 import sys
 import importlib
 
-from ayon_openrv.constants import OPENRV_ROOT_DIR
 import rv.qtutils
 from rv.rvtypes import MinorMode
 
-from ayon_api import get_representations, get_activities, get_representation_by_id, get_user_by_name
+from ayon_api import get_representations
 
 from ayon_core.tools.utils import host_tools
 from ayon_core.pipeline import (
