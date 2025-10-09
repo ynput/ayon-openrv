@@ -3,10 +3,11 @@ import json
 import sys
 import importlib
 
+from ayon_openrv.constants import OPENRV_ROOT_DIR
 import rv.qtutils
 from rv.rvtypes import MinorMode
 
-from ayon_api import get_representations
+from ayon_api import get_representations, get_activities, get_representation_by_id, get_user_by_name
 
 from ayon_core.tools.utils import host_tools
 from ayon_core.pipeline import (
@@ -16,6 +17,7 @@ from ayon_core.pipeline import (
     load_container,
     get_current_project_name,
 )
+from ayon_core.settings import get_project_settings
 from ayon_openrv.api import OpenRVHost
 from ayon_openrv.networking import LoadContainerHandler
 
@@ -58,15 +60,7 @@ class AYONMenus(MinorMode):
                 # Menu name
                 # NOTE: If it already exists it will merge with existing
                 # and add submenus / menuitems to the existing one
-                ("AYON", [
-                    # Menuitem name, actionHook (event), key, stateHook
-                    ("Load...", self.load, None, None),
-                    ("Publish...", self.publish, None, None),
-                    ("Manage...", self.scene_inventory, None, None),
-                    ("Library...", self.library, None, None),
-                    ("_", None),  # separator
-                    ("Work Files...", self.workfiles, None, None),
-                ])
+                ("AYON", self.menu_item()),
             ],
             # initialization order
             sortKey="source_setup",
@@ -93,6 +87,35 @@ class AYONMenus(MinorMode):
     def library(self, event):
         host_tools.show_library_loader(parent=self._parent)
 
+    def activity_stream(self, event):
+        try:
+            from ayon_review_desktop.adaptors import RVAdaptor
+        except ImportError:
+            self.log.debug(
+                "Failed to import 'ayon_review_desktop'. Is it installed?"
+            )
+            return
+        rv_adaptor = RVAdaptor(parent=self._parent)
+        rv_adaptor.load_activity_stream()
+
+
+    def menu_item(self):
+        menu = [
+            # Menuitem name, actionHook (event), key, stateHook
+            ("Load...", self.load, None, None),
+            ("Publish...", self.publish, None, None),
+            ("Manage...", self.scene_inventory, None, None),
+            ("Library...", self.library, None, None),
+            ("_", None),  # separator
+            ("Work Files...", self.workfiles, None, None),
+        ]
+        # Add Activity Stream menu item if enabled in project settings
+        project_settings = get_project_settings(get_current_project_name())
+        review_desktop = project_settings.get("review_desktop", {})
+        if review_desktop.get("enabled", True):
+            menu.append(("_", None))  # separator
+            menu.append(("Activity Stream...", self.activity_stream, None, None))
+        return menu
 
 def data_loader():
     incoming_data_file = os.environ.get(
