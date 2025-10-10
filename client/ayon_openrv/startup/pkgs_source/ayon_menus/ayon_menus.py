@@ -158,5 +158,3 @@ if os.getenv("AYON_RV_NO_MENU") != "1":
             install_host_in_ayon()
             data_loader()
         return AYONMenus()
-
-# https://github.com/ynput/ayon-openrv/pull/new/feature/implement_activity_streams_panel
