@@ -90,7 +90,7 @@ class AYONMenus(MinorMode):
         try:
             from ayon_review_desktop.adaptors import RVAdaptor
         except ImportError:
-            self.log.debug(
+            print(
                 "Failed to import 'ayon_review_desktop'. Is it installed?"
             )
             return
@@ -111,7 +111,7 @@ class AYONMenus(MinorMode):
         # Add Activity Stream menu item if enabled in project settings
         project_settings = get_project_settings(get_current_project_name())
         review_desktop = project_settings.get("review_desktop", {})
-        if review_desktop.get("enabled", True):
+        if review_desktop.get("enabled", False):
             menu.append(("_", None))  # separator
             menu.append(("Activity Stream...", self.activity_stream, None, None))
         return menu
@@ -158,3 +158,5 @@ if os.getenv("AYON_RV_NO_MENU") != "1":
             install_host_in_ayon()
             data_loader()
         return AYONMenus()
+
+# https://github.com/ynput/ayon-openrv/pull/new/feature/implement_activity_streams_panel
