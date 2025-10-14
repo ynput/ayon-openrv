@@ -97,7 +97,6 @@ class AYONMenus(MinorMode):
         rv_adaptor = RVAdaptor(parent=self._parent)
         rv_adaptor.load_activity_stream()
 
-
     def menu_item(self):
         menu = [
             # Menuitem name, actionHook (event), key, stateHook
