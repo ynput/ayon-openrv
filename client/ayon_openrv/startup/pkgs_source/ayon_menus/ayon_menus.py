@@ -88,13 +88,13 @@ class AYONMenus(MinorMode):
 
     def activity_stream(self, event):
         try:
-            from ayon_review_desktop.adaptors import RVAdaptor
+            from ayon_review_desktop import ReviewController
         except ImportError:
             print(
                 "Failed to import 'ayon_review_desktop'. Is it installed?"
             )
             return
-        rv_adaptor = RVAdaptor(parent=self._parent)
+        rv_adaptor = ReviewController(parent=self._parent, host="openrv")
         rv_adaptor.load_activity_stream()
 
     def menu_item(self):
