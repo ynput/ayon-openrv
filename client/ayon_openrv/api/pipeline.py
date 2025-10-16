@@ -191,7 +191,7 @@ def imprint_container(node, name, namespace, context, loader):
         "namespace": str(namespace),
         "loader": str(loader),
         "representation": str(context["representation"]["id"]),
-        "project_name": context["project"]["name"],
+        "project_name": str(context["project"]["name"]),
     }
 
     imprint(node, data, prefix=AYON_ATTR_PREFIX)
