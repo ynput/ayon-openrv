@@ -94,7 +94,7 @@ class AYONMenus(MinorMode):
                 "Failed to import 'ayon_review_desktop'. Is it installed?"
             )
             return
-        rv_adaptor = ReviewController(parent=self._parent, host="openrv")
+        rv_adaptor = ReviewController(parent=self._parent, host="rv")
         rv_adaptor.load_activity_stream()
 
     def menu_item(self):
