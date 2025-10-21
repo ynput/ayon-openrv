@@ -95,7 +95,7 @@ class AYONMenus(MinorMode):
             traceback.print_exc()
             return
         rv_adaptor = ReviewController(parent=self._parent, host="rv")
-        rv_adaptor.load_activity_stream()
+        rv_adaptor.load_activity_data()
 
     def menu_item(self):
         menu = [
