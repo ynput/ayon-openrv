@@ -89,9 +89,9 @@ class AYONMenus(MinorMode):
     def activity_stream(self, event):
         try:
             from ayon_review_desktop import ReviewController
-        except ImportError:
+        except ImportError as exc:
             print(
-                "Failed to import 'ayon_review_desktop'. Is it installed?"
+                f"Failed to import 'ayon_review_desktop': {exc}"
             )
             return
         rv_adaptor = ReviewController(parent=self._parent, host="rv")
