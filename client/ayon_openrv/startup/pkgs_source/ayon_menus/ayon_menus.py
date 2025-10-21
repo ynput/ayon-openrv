@@ -2,6 +2,7 @@ import os
 import json
 import sys
 import importlib
+import traceback
 
 import rv.qtutils
 from rv.rvtypes import MinorMode
@@ -89,10 +90,9 @@ class AYONMenus(MinorMode):
     def activity_stream(self, event):
         try:
             from ayon_review_desktop import ReviewController
-        except ImportError as exc:
-            print(
-                f"Failed to import 'ayon_review_desktop': {exc}"
-            )
+        except ImportError:
+            print("Failed to import 'ayon_review_desktop':")
+            traceback.print_exc()
             return
         rv_adaptor = ReviewController(parent=self._parent, host="rv")
         rv_adaptor.load_activity_stream()
