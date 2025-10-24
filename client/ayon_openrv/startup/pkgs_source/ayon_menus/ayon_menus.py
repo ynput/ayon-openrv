@@ -94,10 +94,34 @@ class AYONMenus(MinorMode):
             print("Failed to import 'ayon_review_desktop':")
             traceback.print_exc()
             return
-        rv_adaptor = ReviewController(parent=self._parent, host="rv")
-        activity_window = rv_adaptor.get_panel("activity_stream")
-        rv_adaptor.load_activity_data()
-        activity_window.show()
+        review_controller = ReviewController(host="rv")
+        review_controller.load_activity_data()
+        activity_stream = review_controller.get_panel("activity_stream")
+        activity_stream.show()
+
+    def activity_panel(self, event):
+        try:
+            from ayon_review_desktop import ReviewController
+        except ImportError:
+            print("Failed to import 'ayon_review_desktop':")
+            traceback.print_exc()
+            return
+        review_controller = ReviewController(host="rv")
+        review_controller.load_activity_data()
+        activity_panel = review_controller.get_panel("activity_panel")
+        activity_panel.show()
+
+    def detail_panel(self, event):
+        try:
+            from ayon_review_desktop import ReviewController
+        except ImportError:
+            print("Failed to import 'ayon_review_desktop':")
+            traceback.print_exc()
+            return
+        review_controller = ReviewController(host="rv")
+        review_controller.load_activity_data()
+        detail_panel = review_controller.get_panel("detail_panel")
+        detail_panel.show()
 
     def menu_item(self):
         menu = [
@@ -115,6 +139,8 @@ class AYONMenus(MinorMode):
         if review_desktop.get("enabled", False):
             menu.append(("_", None))  # separator
             menu.append(("Activity Stream...", self.activity_stream, None, None))
+            menu.append(("Activity Panel...", self.activity_panel, None, None))
+            menu.append(("Detail Panel...", self.detail_panel, None, None))
         return menu
 
 def data_loader():
