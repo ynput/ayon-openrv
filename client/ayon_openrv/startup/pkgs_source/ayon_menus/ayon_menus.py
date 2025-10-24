@@ -97,7 +97,7 @@ class AYONMenus(MinorMode):
         review_controller = ReviewController(host="rv")
         review_controller.load_activity_data()
         activity_stream = review_controller.get_panel("activity_stream")
-        activity_stream.show()
+        set_docker_widget(self._parent, activity_stream, "Activity Stream")
 
     def activity_panel(self, event):
         try:
@@ -109,7 +109,7 @@ class AYONMenus(MinorMode):
         review_controller = ReviewController(host="rv")
         review_controller.load_activity_data()
         activity_panel = review_controller.get_panel("activity_panel")
-        activity_panel.show()
+        set_docker_widget(self._parent, activity_panel, "Activity Panel")
 
     def detail_panel(self, event):
         try:
@@ -121,7 +121,7 @@ class AYONMenus(MinorMode):
         review_controller = ReviewController(host="rv")
         review_controller.load_activity_data()
         detail_panel = review_controller.get_panel("detail_panel")
-        detail_panel.show()
+        set_docker_widget(self._parent, detail_panel, "Detail Panel")
 
     def menu_item(self):
         menu = [
@@ -185,3 +185,11 @@ if os.getenv("AYON_RV_NO_MENU") != "1":
             install_host_in_ayon()
             data_loader()
         return AYONMenus()
+
+
+def set_docker_widget(parent, panel, widget_name):
+    from qtpy import QtWidgets, QtCore
+    dock = QtWidgets.QDockWidget(widget_name, parent)
+    dock.setWidget(panel)
+    parent.addDockWidget(QtCore.Qt.RightDockWidgetArea, dock)
+    dock.show()
