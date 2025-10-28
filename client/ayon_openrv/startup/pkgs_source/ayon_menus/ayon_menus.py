@@ -87,17 +87,17 @@ class AYONMenus(MinorMode):
     def library(self, event):
         host_tools.show_library_loader(parent=self._parent)
 
-    def activity_stream(self, event):
-        try:
-            from ayon_review_desktop import ReviewController
-        except ImportError:
-            print("Failed to import 'ayon_review_desktop':")
-            traceback.print_exc()
-            return
-        review_controller = ReviewController(host="rv")
-        review_controller.load_activity_data()
-        activity_stream = review_controller.get_panel("activity_stream")
-        set_docker_widget(self._parent, activity_stream, "Activity Stream")
+    # def activity_stream(self, event):
+    #     try:
+    #         from ayon_review_desktop import ReviewController
+    #     except ImportError:
+    #         print("Failed to import 'ayon_review_desktop':")
+    #         traceback.print_exc()
+    #         return
+    #     review_controller = ReviewController(host="rv")
+    #     review_controller.load_activity_data()
+    #     activity_stream = review_controller.get_panel("activity_stream")
+    #     set_docker_widget(self._parent, activity_stream, "Activity Stream")
 
     def activity_panel(self, event):
         try:
@@ -111,17 +111,17 @@ class AYONMenus(MinorMode):
         activity_panel = review_controller.get_panel("activity_panel")
         set_docker_widget(self._parent, activity_panel, "Activity Panel")
 
-    def detail_panel(self, event):
-        try:
-            from ayon_review_desktop import ReviewController
-        except ImportError:
-            print("Failed to import 'ayon_review_desktop':")
-            traceback.print_exc()
-            return
-        review_controller = ReviewController(host="rv")
-        review_controller.load_activity_data()
-        detail_panel = review_controller.get_panel("detail_panel")
-        set_docker_widget(self._parent, detail_panel, "Detail Panel")
+    # def detail_panel(self, event):
+    #     try:
+    #         from ayon_review_desktop import ReviewController
+    #     except ImportError:
+    #         print("Failed to import 'ayon_review_desktop':")
+    #         traceback.print_exc()
+    #         return
+    #     review_controller = ReviewController(host="rv")
+    #     review_controller.load_activity_data()
+    #     detail_panel = review_controller.get_panel("detail_panel")
+    #     set_docker_widget(self._parent, detail_panel, "Detail Panel")
 
     def menu_item(self):
         menu = [
@@ -138,9 +138,9 @@ class AYONMenus(MinorMode):
         review_desktop = project_settings.get("review_desktop", {})
         if review_desktop.get("enabled", False):
             menu.append(("_", None))  # separator
-            menu.append(("Activity Stream...", self.activity_stream, None, None))
+            # menu.append(("Activity Stream...", self.activity_stream, None, None))
             menu.append(("Activity Panel...", self.activity_panel, None, None))
-            menu.append(("Detail Panel...", self.detail_panel, None, None))
+            # menu.append(("Detail Panel...", self.detail_panel, None, None))
         return menu
 
 def data_loader():
