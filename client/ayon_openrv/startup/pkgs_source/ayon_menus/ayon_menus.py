@@ -92,7 +92,7 @@ class AYONMenus(MinorMode):
         panel = self.review_controller.get_panel(panel_name)
         self.review_controller.load_activity_data()
         label = panel_name.replace("_", " ").capitalize()
-        set_docker_widget(self._parent, panel, label)
+        self.review_controller.set_docker_widget(self._parent, panel, label)
 
     def add_desktop_review_menu_items(self, menu):
         # Check if addon is enabled
