@@ -189,7 +189,9 @@ if os.getenv("AYON_RV_NO_MENU") != "1":
 
 def set_docker_widget(parent, panel, widget_name):
     from qtpy import QtWidgets, QtCore
+    from ayon_core.style import load_stylesheet
     dock = QtWidgets.QDockWidget(widget_name, parent)
     dock.setWidget(panel)
     parent.addDockWidget(QtCore.Qt.RightDockWidgetArea, dock)
+    dock.setStyleSheet(load_stylesheet())
     dock.show()
