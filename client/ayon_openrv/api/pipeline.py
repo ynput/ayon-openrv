@@ -13,6 +13,7 @@ from ayon_core.pipeline import (
     register_inventory_action_path,
     register_creator_plugin_path,
     AYON_CONTAINER_ID,
+    get_current_project_name,
 )
 
 PLUGINS_DIR = os.path.join(OPENRV_ROOT_DIR, "plugins")
@@ -205,7 +206,8 @@ def parse_container(node):
     """
     # If not all required data return None
     required = ['id', 'schema', 'name',
-                'namespace', 'loader', 'representation']
+                'namespace', 'loader', 'representation',
+                'project_name']
 
     data = {}
     for key in required:
@@ -214,7 +216,14 @@ def parse_container(node):
             # backward compatibility
             prop = f"{node}.openpype.{key}"
             if not rv.commands.propertyExists(prop):
-                return
+                if key != "project_name":
+                    return
+                else:
+                    imprint(
+                        node,
+                        {"project_name": get_current_project_name()},
+                        prefix=AYON_ATTR_PREFIX
+                    )
 
         value = rv.commands.getStringProperty(prop)[0]
         data[key] = value
