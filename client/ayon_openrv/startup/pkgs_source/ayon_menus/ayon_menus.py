@@ -2,6 +2,8 @@ import os
 import json
 import sys
 import importlib
+import traceback
+from functools import partial
 
 import rv.qtutils
 from rv.rvtypes import MinorMode
@@ -16,6 +18,7 @@ from ayon_core.pipeline import (
     load_container,
     get_current_project_name,
 )
+from ayon_core.settings import get_project_settings
 from ayon_openrv.api import OpenRVHost
 from ayon_openrv.networking import LoadContainerHandler
 
@@ -58,15 +61,7 @@ class AYONMenus(MinorMode):
                 # Menu name
                 # NOTE: If it already exists it will merge with existing
                 # and add submenus / menuitems to the existing one
-                ("AYON", [
-                    # Menuitem name, actionHook (event), key, stateHook
-                    ("Load...", self.load, None, None),
-                    ("Publish...", self.publish, None, None),
-                    ("Manage...", self.scene_inventory, None, None),
-                    ("Library...", self.library, None, None),
-                    ("_", None),  # separator
-                    ("Work Files...", self.workfiles, None, None),
-                ])
+                ("AYON", self.menu_item()),
             ],
             # initialization order
             sortKey="source_setup",
@@ -92,6 +87,54 @@ class AYONMenus(MinorMode):
 
     def library(self, event):
         host_tools.show_library_loader(parent=self._parent)
+
+    def open_desktop_review_panel(self, panel_name: str, event):
+        panel = self.review_controller.get_panel(panel_name)
+        self.review_controller.set_project(get_current_project_name())
+        self.review_controller.load_activity_data()
+        label = panel_name.replace("_", " ").capitalize()
+        self.review_controller.set_docker_widget(self._parent, panel, label)
+
+    def add_desktop_review_menu_items(self, menu):
+        # Check if addon is enabled
+        project_settings = get_project_settings(get_current_project_name())
+        review_desktop = project_settings.get("review_desktop", {})
+        if not review_desktop.get("enabled", False):
+            return
+        # import review desktop controler
+        try:
+            from ayon_review_desktop import ReviewController
+        except ImportError:
+            print("Failed to import 'ayon_review_desktop':")
+            traceback.print_exc()
+            return
+        # instance controler and return the menu items.
+        self.review_controller = ReviewController(host="rv")
+        menu.append(("_", None))  # separator
+        for panel_name in self.review_controller.get_available_panels():
+            label = panel_name.replace("_", " ").capitalize()
+            menu.append(
+                (
+                    f"{label}...",
+                    partial(self.open_desktop_review_panel, panel_name),
+                    None,
+                    None,
+                )
+            )
+
+    def menu_item(self):
+        menu = [
+            # Menuitem name, actionHook (event), key, stateHook
+            ("Load...", self.load, None, None),
+            ("Publish...", self.publish, None, None),
+            ("Manage...", self.scene_inventory, None, None),
+            ("Library...", self.library, None, None),
+            ("_", None),  # separator
+            ("Work Files...", self.workfiles, None, None),
+        ]
+        # Add Activity Stream menu item if enabled in project settings
+        self.add_desktop_review_menu_items(menu)
+        return menu
 
 
 def data_loader():
@@ -136,3 +179,14 @@ if os.getenv("AYON_RV_NO_MENU") != "1":
             install_host_in_ayon()
             data_loader()
         return AYONMenus()
+
+
+def set_docker_widget(parent, panel, widget_name):
+    from qtpy import QtWidgets, QtCore
+    from ayon_ui_qt import style_widget_and_siblings
+
+    dock = QtWidgets.QDockWidget(widget_name, parent)
+    dock.setWidget(panel)
+    parent.addDockWidget(QtCore.Qt.RightDockWidgetArea, dock)
+    style_widget_and_siblings(dock)
+    dock.show()
