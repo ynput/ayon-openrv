@@ -179,14 +179,3 @@ if os.getenv("AYON_RV_NO_MENU") != "1":
             install_host_in_ayon()
             data_loader()
         return AYONMenus()
-
-
-def set_docker_widget(parent, panel, widget_name):
-    from qtpy import QtWidgets, QtCore
-    from ayon_ui_qt import style_widget_and_siblings
-
-    dock = QtWidgets.QDockWidget(widget_name, parent)
-    dock.setWidget(panel)
-    parent.addDockWidget(QtCore.Qt.RightDockWidgetArea, dock)
-    style_widget_and_siblings(dock)
-    dock.show()
