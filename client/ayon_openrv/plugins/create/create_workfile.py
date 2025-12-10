@@ -13,6 +13,7 @@ from ayon_core.pipeline import (
 class OpenRVWorkfileCreator(AutoCreator):
     identifier = "workfile"
     product_type = "workfile"
+    product_base_type = "workfile"
     label = "Workfile"
 
     default_variant = "Main"
