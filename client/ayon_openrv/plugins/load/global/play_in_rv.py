@@ -9,7 +9,7 @@ from ayon_core.lib.transcoding import (
 from ayon_core.pipeline import load
 from ayon_core.pipeline.load import LoadError
 
-from ayon_openrv.networking import RVConnector, FailedToConnectError
+from ayon_openrv.networking import RVConnector
 
 
 class PlayInRV(load.LoaderPlugin):
@@ -61,15 +61,12 @@ class PlayInRV(load.LoaderPlugin):
             "representation": context["representation"]["id"],
         }])
         # This also retries the connection
-        try:
-            with rvcon:
-                rvcon.send_event(
-                    "ayon_load_container",
-                    payload,
-                    shall_return=False
-                )
-        except FailedToConnectError as exc:
-            raise LoadError(str(exc))
+        with rvcon:
+            rvcon.send_event(
+                "ayon_load_container",
+                payload,
+                shall_return=False
+            )
 
     def _get_lauch_context(self, context):
         # get launch context variables

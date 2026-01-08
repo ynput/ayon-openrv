@@ -28,6 +28,10 @@ JSON_PREFIX = "JSON:::"
 class OpenRVHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
     name = "openrv"
 
+    def __init__(self):
+        super(OpenRVHost, self).__init__()
+        self._ay_events = {}
+
     def install(self):
         pyblish.api.register_plugin_path(PUBLISH_PATH)
         pyblish.api.register_host("openrv")
