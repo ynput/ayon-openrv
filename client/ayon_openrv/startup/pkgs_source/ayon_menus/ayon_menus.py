@@ -2,6 +2,8 @@ import os
 import json
 import sys
 import importlib
+import traceback
+from functools import partial
 
 import rv.qtutils
 from rv.rvtypes import MinorMode
@@ -16,6 +18,7 @@ from ayon_core.pipeline import (
     load_container,
     get_current_project_name,
 )
+from ayon_core.settings import get_project_settings
 from ayon_openrv.api import OpenRVHost
 from ayon_openrv.networking import LoadContainerHandler
 
@@ -35,7 +38,44 @@ for path in sys.path:
 sys.path[:] = rv_paths + non_rv_paths
 
 import PyOpenColorIO  # noqa
+
 importlib.reload(PyOpenColorIO)
+
+
+def enable_python_debugger():
+    if not os.environ.get("AYON_RV_DEBUG"):
+        return
+
+    import logging
+    import platform
+
+    try:
+        import debugpy
+    except ImportError:
+        logging.error("AYON_RV_DEBUG: Debugpy is not installed: ")
+        return
+
+    rv_interpreter = None
+    system = platform.system().lower()
+    if system == "darwin":
+        rv_interpreter = f"{rv_root}/MacOS/python"
+    else:
+        logging.error(
+            "AYON_RV_DEBUG: Debugger is not supported on this %s: "
+            "implement me !",
+            system,
+        )
+
+    if not rv_interpreter:
+        logging.error("AYON_RV_DEBUG: Could not find RV interpreter")
+        return
+
+    logging.info(f"AYON_RV_DEBUG: Enable debugger: {rv_root}")
+    debugpy.configure(python=f"{rv_root}/MacOS/python")
+    debugpy.listen(("0.0.0.0", 5678))
+    logging.info(
+        "AYON_RV_DEBUG: Waiting for debugger to attach on port 5678..."
+    )
 
 
 def install_host_in_ayon():
@@ -44,7 +84,6 @@ def install_host_in_ayon():
 
 
 class AYONMenus(MinorMode):
-
     def __init__(self):
         MinorMode.__init__(self)
         self.init(
@@ -52,27 +91,21 @@ class AYONMenus(MinorMode):
             globalBindings=None,
             overrideBindings=[
                 # event name, callback, description
-                ("ayon_load_container", on_ayon_load_container, "Loads an AYON representation into the session.")
+                (
+                    "ayon_load_container",
+                    on_ayon_load_container,
+                    "Loads an AYON representation into the session.",
+                )
             ],
             menu=[
                 # Menu name
                 # NOTE: If it already exists it will merge with existing
                 # and add submenus / menuitems to the existing one
-                ("AYON", [
-                    # Menuitem name, actionHook (event), key, stateHook
-                    ("Load...", self.load, None, None),
-                    ("Publish...", self.publish, None, None),
-                    ("Manage...", self.scene_inventory, None, None),
-                    ("Library...", self.library, None, None),
-                    ("_", None),  # separator
-                    ("Work Files...", self.workfiles, None, None),
-                    ("_", None),  # separator
-                    ("Activity Stream...", self.activity_stream, None, None),
-                ])
+                ("AYON", self.menu_item()),
             ],
             # initialization order
             sortKey="source_setup",
-            ordering=15
+            ordering=15,
         )
 
     @property
@@ -83,8 +116,7 @@ class AYONMenus(MinorMode):
         host_tools.show_loader(parent=self._parent, use_context=True)
 
     def publish(self, event):
-        host_tools.show_publisher(parent=self._parent,
-                                  tab="publish")
+        host_tools.show_publisher(parent=self._parent, tab="publish")
 
     def workfiles(self, event):
         host_tools.show_workfiles(parent=self._parent)
@@ -95,34 +127,59 @@ class AYONMenus(MinorMode):
     def library(self, event):
         host_tools.show_library_loader(parent=self._parent)
 
-    def activity_stream(self, event):
-        print("Activity Stream clicked")
-        
-        try:
-            # Since ayon_ui_qt is now in PYTHONPATH (set by pre-launch hook),
-            # we can import it directly without any path manipulation
-            from ayon_ui_qt.activity_stream import AYActivityStream
-            print("Successfully imported AYActivityStream")
-            
-            # Create and show the activity stream widget
-            activity_widget = AYActivityStream(parent=self._parent)
-            activity_widget.show()
-            print("Activity Stream widget created and shown")
-            
-        except ImportError as e:
-            print(f"Failed to import AYActivityStream: {e}")
-            print("Make sure the pre-launch hook has run and added ayon_ui_qt to PYTHONPATH")
-        except Exception as e:
-            print(f"Error creating Activity Stream widget: {e}")
+    def open_desktop_review_panel(self, panel_name: str, event):
+        panel = self.review_controller.get_panel(panel_name)
+        self.review_controller.set_project(get_current_project_name() or "")
+        self.review_controller.load_ayon_data()
+        label = panel_name.replace("_", " ").capitalize()
+        self.review_controller.set_docker_widget(self._parent, panel, label)
 
+    def add_desktop_review_menu_items(self, menu):
+        # Check if addon is enabled
+        project_settings = get_project_settings(get_current_project_name())
+        review_desktop = project_settings.get("review_desktop", {})
+        if not review_desktop.get("enabled", False):
+            return
+        # import review desktop controler
+        try:
+            from ayon_review_desktop import ReviewController
+        except ImportError:
+            print("Failed to import 'ayon_review_desktop':")
+            traceback.print_exc()
+            return
+        # instance controler and return the menu items.
+        self.review_controller = ReviewController(host="rv")
+        menu.append(("_", None))  # separator
+        for k, panel_name in enumerate(self.review_controller.get_available_panels()):
+            label = panel_name.replace("_", " ").capitalize()
+            menu.append(
+                (
+                    f"{label}...",
+                    partial(self.open_desktop_review_panel, panel_name),
+                    f"control shift {k + 1}",
+                    None,
+                )
+            )
+
+    def menu_item(self):
+        menu = [
+            # Menuitem name, actionHook (event), key, stateHook
+            ("Load...", self.load, None, None),
+            ("Publish...", self.publish, None, None),
+            ("Manage...", self.scene_inventory, None, None),
+            ("Library...", self.library, None, None),
+            ("_", None),  # separator
+            ("Work Files...", self.workfiles, None, None),
+        ]
+        # Add Activity Stream menu item if enabled in project settings
+        self.add_desktop_review_menu_items(menu)
+        return menu
 
 
 def data_loader():
-    incoming_data_file = os.environ.get(
-        "AYON_LOADER_REPRESENTATIONS", None
-    )
+    incoming_data_file = os.environ.get("AYON_LOADER_REPRESENTATIONS", None)
     if incoming_data_file:
-        with open(incoming_data_file, 'rb') as file:
+        with open(incoming_data_file, "rb") as file:
             decoded_data = json.load(file)
         os.remove(incoming_data_file)
         load_data(dataset=decoded_data["representations"])
@@ -136,20 +193,25 @@ def on_ayon_load_container(event):
 
 
 def load_data(dataset=None):
-
     project_name = get_current_project_name()
     available_loaders = discover_loader_plugins(project_name)
-    Loader = next(loader for loader in available_loaders
-                  if loader.__name__ == "FramesLoader")
+    Loader = next(
+        loader
+        for loader in available_loaders
+        if loader.__name__ == "FramesLoader"
+    )
 
-    representations = get_representations(project_name,
-                                          representation_ids=dataset)
+    representations = get_representations(
+        project_name, representation_ids=dataset
+    )
 
     for representation in representations:
         load_container(Loader, representation)
 
+
 # only add menu items if AYON_RV_NO_MENU is not set to 1
 if os.getenv("AYON_RV_NO_MENU") != "1":
+
     def createMode():
         # This function triggers for each RV session window being opened, for
         # example when using File > New Session this will trigger again. As such
@@ -159,3 +221,6 @@ if os.getenv("AYON_RV_NO_MENU") != "1":
             install_host_in_ayon()
             data_loader()
         return AYONMenus()
+
+
+enable_python_debugger()
