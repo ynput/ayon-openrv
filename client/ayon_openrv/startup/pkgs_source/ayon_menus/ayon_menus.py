@@ -150,13 +150,13 @@ class AYONMenus(MinorMode):
         # instance controler and return the menu items.
         self.review_controller = ReviewController(host="rv")
         menu.append(("_", None))  # separator
-        for panel_name in self.review_controller.get_available_panels():
+        for k, panel_name in enumerate(self.review_controller.get_available_panels()):
             label = panel_name.replace("_", " ").capitalize()
             menu.append(
                 (
                     f"{label}...",
                     partial(self.open_desktop_review_panel, panel_name),
-                    None,
+                    f"control shift {k + 1}",
                     None,
                 )
             )
