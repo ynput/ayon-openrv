@@ -38,7 +38,44 @@ for path in sys.path:
 sys.path[:] = rv_paths + non_rv_paths
 
 import PyOpenColorIO  # noqa
+
 importlib.reload(PyOpenColorIO)
+
+
+def enable_python_debugger():
+    if not os.environ.get("AYON_RV_DEBUG"):
+        return
+
+    import logging
+    import platform
+
+    try:
+        import debugpy
+    except ImportError:
+        logging.error("AYON_RV_DEBUG: Debugpy is not installed: ")
+        return
+
+    rv_interpreter = None
+    system = platform.system().lower()
+    if system == "darwin":
+        rv_interpreter = f"{rv_root}/MacOS/python"
+    else:
+        logging.error(
+            "AYON_RV_DEBUG: Debugger is not supported on this %s: "
+            "implement me !",
+            system,
+        )
+
+    if not rv_interpreter:
+        logging.error("AYON_RV_DEBUG: Could not find RV interpreter")
+        return
+
+    logging.info(f"AYON_RV_DEBUG: Enable debugger: {rv_root}")
+    debugpy.configure(python=f"{rv_root}/MacOS/python")
+    debugpy.listen(("0.0.0.0", 5678))
+    logging.info(
+        "AYON_RV_DEBUG: Waiting for debugger to attach on port 5678..."
+    )
 
 
 def install_host_in_ayon():
@@ -47,7 +84,6 @@ def install_host_in_ayon():
 
 
 class AYONMenus(MinorMode):
-
     def __init__(self):
         MinorMode.__init__(self)
         self.init(
@@ -55,7 +91,11 @@ class AYONMenus(MinorMode):
             globalBindings=None,
             overrideBindings=[
                 # event name, callback, description
-                ("ayon_load_container", on_ayon_load_container, "Loads an AYON representation into the session.")
+                (
+                    "ayon_load_container",
+                    on_ayon_load_container,
+                    "Loads an AYON representation into the session.",
+                )
             ],
             menu=[
                 # Menu name
@@ -65,7 +105,7 @@ class AYONMenus(MinorMode):
             ],
             # initialization order
             sortKey="source_setup",
-            ordering=15
+            ordering=15,
         )
 
     @property
@@ -76,8 +116,7 @@ class AYONMenus(MinorMode):
         host_tools.show_loader(parent=self._parent, use_context=True)
 
     def publish(self, event):
-        host_tools.show_publisher(parent=self._parent,
-                                  tab="publish")
+        host_tools.show_publisher(parent=self._parent, tab="publish")
 
     def workfiles(self, event):
         host_tools.show_workfiles(parent=self._parent)
@@ -90,7 +129,7 @@ class AYONMenus(MinorMode):
 
     def open_desktop_review_panel(self, panel_name: str, event):
         panel = self.review_controller.get_panel(panel_name)
-        self.review_controller.set_project(get_current_project_name())
+        self.review_controller.set_project(get_current_project_name() or "")
         self.review_controller.load_ayon_data()
         label = panel_name.replace("_", " ").capitalize()
         self.review_controller.set_docker_widget(self._parent, panel, label)
@@ -138,11 +177,9 @@ class AYONMenus(MinorMode):
 
 
 def data_loader():
-    incoming_data_file = os.environ.get(
-        "AYON_LOADER_REPRESENTATIONS", None
-    )
+    incoming_data_file = os.environ.get("AYON_LOADER_REPRESENTATIONS", None)
     if incoming_data_file:
-        with open(incoming_data_file, 'rb') as file:
+        with open(incoming_data_file, "rb") as file:
             decoded_data = json.load(file)
         os.remove(incoming_data_file)
         load_data(dataset=decoded_data["representations"])
@@ -156,20 +193,25 @@ def on_ayon_load_container(event):
 
 
 def load_data(dataset=None):
-
     project_name = get_current_project_name()
     available_loaders = discover_loader_plugins(project_name)
-    Loader = next(loader for loader in available_loaders
-                  if loader.__name__ == "FramesLoader")
+    Loader = next(
+        loader
+        for loader in available_loaders
+        if loader.__name__ == "FramesLoader"
+    )
 
-    representations = get_representations(project_name,
-                                          representation_ids=dataset)
+    representations = get_representations(
+        project_name, representation_ids=dataset
+    )
 
     for representation in representations:
         load_container(Loader, representation)
 
+
 # only add menu items if AYON_RV_NO_MENU is not set to 1
 if os.getenv("AYON_RV_NO_MENU") != "1":
+
     def createMode():
         # This function triggers for each RV session window being opened, for
         # example when using File > New Session this will trigger again. As such
@@ -179,3 +221,6 @@ if os.getenv("AYON_RV_NO_MENU") != "1":
             install_host_in_ayon()
             data_loader()
         return AYONMenus()
+
+
+enable_python_debugger()
