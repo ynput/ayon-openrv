@@ -107,6 +107,33 @@ class AYONMenus(MinorMode):
             sortKey="source_setup",
             ordering=15,
         )
+        self._panel_startup_visibility: list[str] = (
+            self._read_panel_startup_visibility()
+        )
+        self._open_visible_panels()
+
+    def _read_panel_startup_visibility(self):
+        return rv.commands.readSettings("ayon", "panel_startup_visibility", [])
+
+    def _write_panel_startup_visibility(self, panel_name: str, visible: bool):
+        if visible:
+            if panel_name not in self._panel_startup_visibility:
+                self._panel_startup_visibility.append(panel_name)
+        else:
+            if panel_name in self._panel_startup_visibility:
+                self._panel_startup_visibility.remove(panel_name)
+        rv.commands.writeSettings(
+            "ayon", "panel_startup_visibility", self._panel_startup_visibility
+        )
+
+    def _open_visible_panels(self):
+        from qtpy.QtWidgets import QApplication  # type: ignore
+
+        QApplication.processEvents()
+        for panel_name in self._panel_startup_visibility:
+            QApplication.processEvents()
+            self.open_desktop_review_panel(panel_name, None)
+            QApplication.processEvents()
 
     @property
     def _parent(self):
@@ -133,6 +160,7 @@ class AYONMenus(MinorMode):
         self.review_controller.load_ayon_data()
         label = panel_name.replace("_", " ").capitalize()
         self.review_controller.set_docker_widget(self._parent, panel, label)
+        self._write_panel_startup_visibility(panel_name, panel.isVisible())
 
     def add_desktop_review_menu_items(self, menu):
         # Check if addon is enabled
@@ -150,7 +178,9 @@ class AYONMenus(MinorMode):
         # instance controler and return the menu items.
         self.review_controller = ReviewController(host="rv")
         menu.append(("_", None))  # separator
-        for k, panel_name in enumerate(self.review_controller.get_available_panels()):
+        for k, panel_name in enumerate(
+            self.review_controller.get_available_panels()
+        ):
             label = panel_name.replace("_", " ").capitalize()
             menu.append(
                 (
