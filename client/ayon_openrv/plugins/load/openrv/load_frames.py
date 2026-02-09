@@ -59,6 +59,10 @@ class FramesLoader(load.LoaderPlugin):
             loader=self.__class__.__name__,
         )
 
+        rv.commands.sendInternalEvent(
+            "ayon-source-loaded", str(node), "FramesLoader"
+        )
+
     def _finalize_loaded_node(self, loaded_node, rep_name, filepath):
         """Finalize the loaded node in OpenRV.
 
