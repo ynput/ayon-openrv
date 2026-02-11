@@ -1,6 +1,6 @@
 package: ayon_scripteditor
 author: Roy Nieterau
-organization: Ynput s.r.o
+organization: Ynput s.r.o.
 version: 1.0
 rv: 3.12
 openrv: 1.0.0
