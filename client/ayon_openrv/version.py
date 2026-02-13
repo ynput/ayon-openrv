@@ -1,3 +1,3 @@
 # -*- coding: utf-8 -*-
 """Package declaring AYON addon 'openrv' version."""
-__version__ = "1.1.4+dev"
+__version__ = "1.1.5+dev"
