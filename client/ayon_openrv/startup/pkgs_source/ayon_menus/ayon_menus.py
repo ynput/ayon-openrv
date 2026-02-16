@@ -182,14 +182,15 @@ class AYONMenus(MinorMode):
 
     def open_desktop_review_panel(self, panel_name: str, *_):
         panel = self.review_controller.get_panel(panel_name)
-        self.review_controller.set_project(get_current_project_name() or "")
-        self.review_controller.load_ayon_data()
         label = panel_name.replace("_", " ").capitalize()
         dock_widget = self.review_controller.set_docker_widget(
             self._parent, panel, label
         )
+        # get the data
+        self.review_controller.set_project(get_current_project_name() or "")
+        self.review_controller.load_ayon_data()
 
-        if panel_name not in self._connected_panels:
+        if dock_widget and panel_name not in self._connected_panels:
             filter_ = DockCloseFilter(
                 panel_name,
                 self._write_panel_startup_visibility,
@@ -197,6 +198,9 @@ class AYONMenus(MinorMode):
             )
             dock_widget.installEventFilter(filter_)
             self._connected_panels.add(panel_name)
+
+        # # allow panel to show now.
+        # QApplication.instance().processEvents()
 
     def add_desktop_review_menu_items(self, menu):
         # Check if addon is enabled
