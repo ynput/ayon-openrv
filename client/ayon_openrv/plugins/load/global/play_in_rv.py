@@ -48,7 +48,6 @@ class PlayInRV(load.LoaderPlugin):
                     "No configured OpenRV found in"
                     " Applications. Ask admin to configure it"
                     " in ayon+settings://applications/applications/openrv."
-                    "\nProvide '-network' there as argument."
                 )
             openrv_app.launch(
                 project_name=project_name,
