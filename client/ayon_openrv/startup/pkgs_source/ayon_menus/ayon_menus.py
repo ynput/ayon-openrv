@@ -1,26 +1,27 @@
-import os
-import json
-import sys
 import importlib
+import json
+import logging
+import os
+import sys
 import traceback
 from functools import partial
 
 import rv.qtutils
-from rv.rvtypes import MinorMode
-
 from ayon_api import get_representations
-
-from ayon_core.tools.utils import host_tools
 from ayon_core.pipeline import (
-    registered_host,
-    install_host,
     discover_loader_plugins,
-    load_container,
     get_current_project_name,
+    install_host,
+    load_container,
+    registered_host,
 )
 from ayon_core.settings import get_project_settings
+from ayon_core.tools.utils import host_tools
 from ayon_openrv.api import OpenRVHost
 from ayon_openrv.networking import LoadContainerHandler
+from qtpy.QtCore import QEvent, QObject, QTimer
+from qtpy.QtWidgets import QApplication
+from rv.rvtypes import MinorMode
 
 # TODO (Critical) Remove this temporary hack to avoid clash with PyOpenColorIO
 #   that is contained within AYON's venv
@@ -46,7 +47,6 @@ def enable_python_debugger():
     if not os.environ.get("AYON_RV_DEBUG"):
         return
 
-    import logging
     import platform
 
     try:
@@ -83,6 +83,20 @@ def install_host_in_ayon():
     install_host(host)
 
 
+class DockCloseFilter(QObject):
+    def __init__(self, panel_name, callback, parent=None):
+        super().__init__(parent)
+        self._panel_name = panel_name
+        self._callback = callback
+
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.Close:
+            self._callback(self._panel_name, False)
+        elif event.type() == QEvent.Show:
+            self._callback(self._panel_name, True)
+        return False
+
+
 class AYONMenus(MinorMode):
     def __init__(self):
         MinorMode.__init__(self)
@@ -95,7 +109,12 @@ class AYONMenus(MinorMode):
                     "ayon_load_container",
                     on_ayon_load_container,
                     "Loads an AYON representation into the session.",
-                )
+                ),
+                (
+                    "session-initialized",
+                    self._open_visible_panels,
+                    "Open visible panels on session initialization",
+                ),
             ],
             menu=[
                 # Menu name
@@ -107,6 +126,37 @@ class AYONMenus(MinorMode):
             sortKey="source_setup",
             ordering=15,
         )
+        self._panel_startup_visibility = []
+        self._connected_panels = set()
+        self._is_closing = False
+
+    def _read_panel_startup_visibility(self):
+        return rv.commands.readSettings("ayon", "panel_startup_visibility", [])
+
+    def _write_panel_startup_visibility(self, panel_name: str, visible: bool):
+        if self._is_closing:
+            return
+
+        if visible:
+            if panel_name not in self._panel_startup_visibility:
+                self._panel_startup_visibility.append(panel_name)
+        else:
+            if panel_name in self._panel_startup_visibility:
+                self._panel_startup_visibility.remove(panel_name)
+        rv.commands.writeSettings(
+            "ayon", "panel_startup_visibility", self._panel_startup_visibility
+        )
+
+    def _open_visible_panels(self, event):
+        event.reject()
+        self._panel_startup_visibility: list[str] = (
+            self._read_panel_startup_visibility()
+        )
+
+        for panel_name in self._panel_startup_visibility:
+            QTimer.singleShot(
+                0, lambda: self.open_desktop_review_panel(panel_name)
+            )
 
     @property
     def _parent(self):
@@ -127,12 +177,30 @@ class AYONMenus(MinorMode):
     def library(self, event):
         host_tools.show_library_loader(parent=self._parent)
 
-    def open_desktop_review_panel(self, panel_name: str, event):
+    def _on_app_closing(self):
+        self._is_closing = True
+
+    def open_desktop_review_panel(self, panel_name: str, *_):
         panel = self.review_controller.get_panel(panel_name)
+        label = panel_name.replace("_", " ").capitalize()
+        dock_widget = self.review_controller.set_docker_widget(
+            self._parent, panel, label
+        )
+        # get the data
         self.review_controller.set_project(get_current_project_name() or "")
         self.review_controller.load_ayon_data()
-        label = panel_name.replace("_", " ").capitalize()
-        self.review_controller.set_docker_widget(self._parent, panel, label)
+
+        if dock_widget and panel_name not in self._connected_panels:
+            filter_ = DockCloseFilter(
+                panel_name,
+                self._write_panel_startup_visibility,
+                parent=dock_widget,
+            )
+            dock_widget.installEventFilter(filter_)
+            self._connected_panels.add(panel_name)
+
+        # # allow panel to show now.
+        # QApplication.instance().processEvents()
 
     def add_desktop_review_menu_items(self, menu):
         # Check if addon is enabled
@@ -150,7 +218,9 @@ class AYONMenus(MinorMode):
         # instance controler and return the menu items.
         self.review_controller = ReviewController(host="rv")
         menu.append(("_", None))  # separator
-        for k, panel_name in enumerate(self.review_controller.get_available_panels()):
+        for k, panel_name in enumerate(
+            self.review_controller.get_available_panels()
+        ):
             label = panel_name.replace("_", " ").capitalize()
             menu.append(
                 (
@@ -173,6 +243,10 @@ class AYONMenus(MinorMode):
         ]
         # Add Activity Stream menu item if enabled in project settings
         self.add_desktop_review_menu_items(menu)
+
+        # Add a callback to detect when RV is closing
+        QApplication.instance().aboutToQuit.connect(self._on_app_closing)
+
         return menu
 
 
