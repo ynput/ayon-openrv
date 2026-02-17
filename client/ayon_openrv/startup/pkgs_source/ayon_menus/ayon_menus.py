@@ -198,9 +198,6 @@ class AYONMenus(MinorMode):
             dock_widget.installEventFilter(filter_)
             self._connected_panels.add(panel_name)
 
-        # # allow panel to show now.
-        # QApplication.instance().processEvents()
-
     def add_desktop_review_menu_items(self, menu):
         # Check if addon is enabled
         project_settings = get_project_settings(get_current_project_name())
