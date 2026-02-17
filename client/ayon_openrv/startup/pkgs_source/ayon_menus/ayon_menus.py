@@ -182,9 +182,8 @@ class AYONMenus(MinorMode):
 
     def open_desktop_review_panel(self, panel_name: str, *_):
         panel = self.review_controller.get_panel(panel_name)
-        label = panel_name.replace("_", " ").capitalize()
         dock_widget = self.review_controller.set_docker_widget(
-            self._parent, panel, label
+            self._parent, panel, panel_name
         )
         # get the data
         self.review_controller.set_project(get_current_project_name() or "")
