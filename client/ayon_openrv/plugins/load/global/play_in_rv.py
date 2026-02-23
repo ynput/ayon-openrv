@@ -36,7 +36,7 @@ class PlayInRV(load.LoaderPlugin):
         if not rvcon.is_connected:
             # get launch context variables
             project_name, folder_path, task_name = (
-                self._get_lauch_context(context)
+                self._get_launch_context(context)
             )
             # launch RV with context
             app_manager = ApplicationManager()
@@ -48,12 +48,17 @@ class PlayInRV(load.LoaderPlugin):
                     "No configured OpenRV found in"
                     " Applications. Ask admin to configure it"
                     " in ayon+settings://applications/applications/openrv."
-                    "\nProvide '-network' there as argument."
                 )
             openrv_app.launch(
                 project_name=project_name,
                 folder_path=folder_path,
-                task_name=task_name
+                task_name=task_name,
+                # Enforce the `-network` argument so that RV allows receiving
+                # the event we will send it. Note that passing `-network`
+                # multiple times seems fine, so if app arguments or a
+                # pre-launch hook may be enforcing it as well it should not
+                # cause any issues.
+                app_args=["-network"],
             )
 
         payload = json.dumps([{
@@ -68,7 +73,7 @@ class PlayInRV(load.LoaderPlugin):
                 shall_return=False
             )
 
-    def _get_lauch_context(self, context):
+    def _get_launch_context(self, context):
         # get launch context variables
         project_name = context["project"]["name"]
 
