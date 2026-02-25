@@ -1,13 +1,12 @@
 import importlib
 import json
-import logging
 import os
 import sys
 import traceback
 from functools import partial
 
-import rv.qtutils
-from ayon_api import get_representations
+import rv.qtutils  # type: ignore
+from ayon_api import get_representations  # type: ignore
 from ayon_core.pipeline import (
     discover_loader_plugins,
     get_current_project_name,
@@ -15,13 +14,14 @@ from ayon_core.pipeline import (
     load_container,
     registered_host,
 )
+from ayon_core.lib import Logger
 from ayon_core.settings import get_project_settings
 from ayon_core.tools.utils import host_tools
 from ayon_openrv.api import OpenRVHost
 from ayon_openrv.networking import LoadContainerHandler
-from qtpy.QtCore import QEvent, QObject, QTimer
-from qtpy.QtWidgets import QApplication
-from rv.rvtypes import MinorMode
+from qtpy.QtCore import QEvent, QObject, QTimer  # type: ignore
+from qtpy.QtWidgets import QApplication  # type: ignore
+from rv.rvtypes import MinorMode  # type: ignore
 
 # TODO (Critical) Remove this temporary hack to avoid clash with PyOpenColorIO
 #   that is contained within AYON's venv
@@ -38,9 +38,11 @@ for path in sys.path:
         non_rv_paths.append(path)
 sys.path[:] = rv_paths + non_rv_paths
 
-import PyOpenColorIO  # noqa
+import PyOpenColorIO  # type: ignore # noqa
 
 importlib.reload(PyOpenColorIO)
+
+log = Logger.get_logger("ayon_openrv")
 
 
 def enable_python_debugger():
@@ -50,9 +52,9 @@ def enable_python_debugger():
     import platform
 
     try:
-        import debugpy
+        import debugpy  # type: ignore
     except ImportError:
-        logging.error("AYON_RV_DEBUG: Debugpy is not installed: ")
+        log.error("AYON_RV_DEBUG: Debugpy is not installed: ")
         return
 
     rv_interpreter = None
@@ -60,22 +62,20 @@ def enable_python_debugger():
     if system == "darwin":
         rv_interpreter = f"{rv_root}/MacOS/python"
     else:
-        logging.error(
+        log.error(
             "AYON_RV_DEBUG: Debugger is not supported on this %s: "
             "implement me !",
             system,
         )
 
     if not rv_interpreter:
-        logging.error("AYON_RV_DEBUG: Could not find RV interpreter")
+        log.error("AYON_RV_DEBUG: Could not find RV interpreter")
         return
 
-    logging.info(f"AYON_RV_DEBUG: Enable debugger: {rv_root}")
+    log.info(f"AYON_RV_DEBUG: Enable debugger: {rv_root}")
     debugpy.configure(python=f"{rv_root}/MacOS/python")
     debugpy.listen(("0.0.0.0", 5678))
-    logging.info(
-        "AYON_RV_DEBUG: Waiting for debugger to attach on port 5678..."
-    )
+    log.info("AYON_RV_DEBUG: Waiting for debugger to attach on port 5678...")
 
 
 def install_host_in_ayon():
@@ -204,14 +204,14 @@ class AYONMenus(MinorMode):
         review_desktop = project_settings.get("review_desktop", {})
         if not review_desktop.get("enabled", False):
             return
-        # import review desktop controler
+        # import review desktop controller
         try:
             from ayon_review_desktop import ReviewController
         except ImportError:
-            print("Failed to import 'ayon_review_desktop':")
+            log.info("Failed to import 'ayon_review_desktop':")
             traceback.print_exc()
             return
-        # instance controler and return the menu items.
+        # instance controller and return the menu items.
         self.review_controller = ReviewController(host="rv")
         menu.append(("_", None))  # separator
         for k, panel_name in enumerate(
@@ -254,7 +254,7 @@ def data_loader():
         os.remove(incoming_data_file)
         load_data(dataset=decoded_data["representations"])
     else:
-        print("No data for auto-loader")
+        log.info("No data for auto-loader")
 
 
 def on_ayon_load_container(event):
