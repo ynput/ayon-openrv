@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from typing import ClassVar
 
+from ayon_core.lib import EnumDef
 from ayon_core.lib.transcoding import IMAGE_EXTENSIONS
 from ayon_core.pipeline import load
 from ayon_openrv.api.ocio import (
@@ -17,7 +18,7 @@ import rv
 
 
 class FramesLoader(load.LoaderPlugin):
-    """Load frames into OpenRV."""
+    """Load frames into OpenRV"""
 
     label = "Load Frames"
     product_types: ClassVar[set] = {"*"}
@@ -27,6 +28,19 @@ class FramesLoader(load.LoaderPlugin):
 
     icon = "code-fork"
     color = "orange"
+
+    options = [
+        EnumDef(
+            "load_mode",
+            label="Load Mode",
+            items=["switch", "append"],
+            default="switch",
+            tooltip=(
+                "switch: Switch to newly loaded source (makes it active view)\n"
+                "append: Append to timeline (original RV behavior)"
+            ),
+        )
+    ]
 
     def load(
         self,
@@ -58,6 +72,14 @@ class FramesLoader(load.LoaderPlugin):
             context=context,
             loader=self.__class__.__name__,
         )
+
+        # Handle load mode from options
+        load_mode = options.get("load_mode", "switch") if options else "switch"
+        if load_mode == "switch":
+            # Switch to the newly loaded source
+            group = rv.commands.nodeGroup(node)
+            rv.commands.setViewNode(group)
+        # else: append mode - do nothing, let RV build sequence naturally
 
         rv.commands.sendInternalEvent(
             "ayon-source-loaded", str(node), "FramesLoader"
@@ -199,3 +221,4 @@ class FramesLoader(load.LoaderPlugin):
 
     def switch(self, container, context):
         self.update(container, context)
+
