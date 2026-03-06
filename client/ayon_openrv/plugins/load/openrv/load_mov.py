@@ -16,7 +16,8 @@ class MovLoader(load.LoaderPlugin):
     """Load mov into OpenRV"""
 
     label = "Load MOV"
-    product_types: ClassVar[set] = {"*"}
+    product_base_types: ClassVar[set] = {"*"}
+    product_types = product_base_types
     representations: ClassVar[set] = {"*"}
     extensions: ClassVar[set] = {"mov", "mp4"}
     order = 0
