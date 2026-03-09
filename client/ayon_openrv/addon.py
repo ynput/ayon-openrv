@@ -1,9 +1,20 @@
 import os
+from typing import Tuple
 
-from ayon_core.addon import AYONAddon, IHostAddon, IPluginPaths
+import ayon_api
 
-from .version import __version__
+from ayon_core.addon import (
+    AYONAddon,
+    IHostAddon,
+    IPluginPaths,
+    click_wrap,
+    ensure_addons_are_process_ready,
+)
+from ayon_core.pipeline import get_representation_path
+
+
 from .constants import OPENRV_ROOT_DIR
+from .version import __version__
 
 
 class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
@@ -53,3 +64,167 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
 
     def get_workfile_extensions(self):
         return [".rv"]
+
+    def cli(self, addon_click_group):
+        main_group = click_wrap.group(
+            self._cli_main, name=self.name, help="OpenRV addon"
+        )
+        (
+            main_group.command(
+                self._cli_open_workfile,
+                name="open-workfile",
+                help="Open a published RV workfile in OpenRV",
+            )
+            .option("--project_name", required=True, help="Project name")
+            .option(
+                "--app_variant",
+                required=False,
+                default=None,
+                help="OpenRV app variant full name (e.g. openrv/2025)",
+            )
+            .option(
+                "--representation_id",
+                required=True,
+                help="Published RV workfile representation id",
+            )
+        )
+        addon_click_group.add_command(main_group.to_click_obj())
+
+    def _cli_main(self):
+        ensure_addons_are_process_ready(
+            addon_name=self.name,
+            addon_version=self.version,
+        )
+
+    def _cli_open_workfile(
+        self,
+        project_name: str,
+        app_variant: str,
+        representation_id: str
+    ):
+
+        from .networking import RVConnector
+
+        representation = ayon_api.get_representation_by_id(
+            project_name,
+            representation_id,
+        )
+        if representation is None:
+            raise RuntimeError(
+                "Could not find representation by the provided id."
+            )
+
+        rvcon = RVConnector()
+        if not rvcon.is_connected:
+            repre_path = get_representation_path(project_name, representation)
+            folder_path, task_name = (
+                self._get_launch_context_for_representation(
+                    project_name, representation
+                )
+            )
+            self._launch_openrv(
+                project_name,
+                folder_path,
+                task_name,
+                app_variant=app_variant,
+                workfile_path=repre_path,
+                # After opening unset the session filename to avoid user
+                # accidentally saving into the published file.
+                unset_session_filename=True,
+            )
+
+    def _get_launch_context_for_representation(
+        self,
+        project_name: str,
+        representation: str
+    ) -> Tuple[str, str]:
+        version = ayon_api.get_version_by_id(
+            project_name,
+            representation["versionId"],
+            fields={"productId", "taskId"},
+        )
+        if not version:
+            raise RuntimeError(
+                f"Could not resolve parent version for representation "
+                f"'{representation['id']}'."
+            )
+
+        product = ayon_api.get_product_by_id(
+            project_name,
+            version["productId"],
+            fields={"folderId"},
+        )
+        if not product:
+            raise RuntimeError(
+                f"Could not resolve parent product for representation "
+                f"'{representation['id']}'."
+            )
+
+        folder = ayon_api.get_folder_by_id(
+            project_name,
+            product["folderId"],
+            fields={"path"},
+        )
+        folder_path = folder.get("path") if folder else None
+        if not folder_path:
+            raise RuntimeError(
+                f"Could not resolve folder path for representation "
+                f"'{representation['id']}'."
+            )
+
+        task_name = None
+        task_id = version.get("taskId")
+        if task_id:
+            task = ayon_api.get_task_by_id(
+                project_name,
+                task_id,
+                fields={"name"},
+            )
+            if task:
+                task_name = task.get("name")
+
+        return folder_path, task_name
+
+    def _launch_openrv(
+        self,
+        project_name,
+        folder_path,
+        task_name,
+        app_variant=None,
+        workfile_path=None,
+        unset_session_filename=False,
+    ):
+        from ayon_applications import ApplicationManager
+
+        app_manager = ApplicationManager()
+        if app_variant:
+            app_name = app_variant
+        else:
+            openrv_app = app_manager.find_latest_available_variant_for_group(
+                "openrv"
+            )
+            if not openrv_app:
+                raise RuntimeError(
+                    "No configured OpenRV found in Applications. Ask admin "
+                    "to configure it in "
+                    "ayon+settings://applications/applications/openrv."
+                )
+            app_name = openrv_app.full_name
+
+        # Directly after opening the workfile, unset the session so the user
+        # won't accidentally overwrite the passed workfile.
+        env = os.environ.copy()
+        if unset_session_filename:
+            env["AYON_RV_UNSET_SESSION"] = "1"
+
+        app_manager.launch(
+            app_name,
+            project_name=project_name,
+            folder_path=folder_path,
+            task_name=task_name,
+            workfile_path=workfile_path,
+            # OpenRV must run with network mode enabled so it can receive
+            # the `ayon_load_container` event.
+            app_args=["-network"],
+            env=env,
+        )

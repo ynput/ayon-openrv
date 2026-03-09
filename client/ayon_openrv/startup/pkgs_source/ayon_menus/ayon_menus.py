@@ -5,6 +5,7 @@ import os
 import sys
 import traceback
 from functools import partial
+from typing import Callable
 
 import rv.qtutils
 from ayon_api import get_representations
@@ -100,22 +101,31 @@ class DockCloseFilter(QObject):
 class AYONMenus(MinorMode):
     def __init__(self):
         MinorMode.__init__(self)
+
+        bindings: list[tuple[str, Callable, str]] = [
+            # event name, callback, description
+            (
+                "ayon_load_container",
+                on_ayon_load_container,
+                "Loads an AYON representation into the session.",
+            ),
+            (
+                "session-initialized",
+                self._open_visible_panels,
+                "Open visible panels on session initialization",
+            ),
+        ]
+        if os.getenv("AYON_RV_UNSET_SESSION") == "1":
+            bindings.append((
+                "after-session-read",
+                self._unset_session_filename,
+                "Unset session after start",
+            ))
+
         self.init(
             name="py-ayon",
             globalBindings=None,
-            overrideBindings=[
-                # event name, callback, description
-                (
-                    "ayon_load_container",
-                    on_ayon_load_container,
-                    "Loads an AYON representation into the session.",
-                ),
-                (
-                    "session-initialized",
-                    self._open_visible_panels,
-                    "Open visible panels on session initialization",
-                ),
-            ],
+            overrideBindings=bindings,
             menu=[
                 # Menu name
                 # NOTE: If it already exists it will merge with existing
@@ -129,6 +139,14 @@ class AYONMenus(MinorMode):
         self._panel_startup_visibility = []
         self._connected_panels = set()
         self._is_closing = False
+        self._session_was_unset = False
+
+    def _unset_session_filename(self, event=None):
+        # Only ever run once
+        if not self._session_was_unset:
+            logging.debug("Unsetting session filename...")
+            rv.commands.setSessionFileName("")
+            self._session_was_unset = True
 
     def _read_panel_startup_visibility(self):
         return rv.commands.readSettings("ayon", "panel_startup_visibility", [])
