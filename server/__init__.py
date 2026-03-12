@@ -98,7 +98,10 @@ class OpenRVAddon(BaseServerAddon):
             JOIN project_{project_name}.representations AS r
                 ON r.version_id = v.id
             WHERE v.id = $1
-                AND p.product_base_type = 'workfile'
+                AND (
+                    p.product_base_type = 'workfile'
+                    OR p.product_type = 'workfile'
+                )
                 AND lower(r.name) = 'rv'
             LIMIT 1
         """
