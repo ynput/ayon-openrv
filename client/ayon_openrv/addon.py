@@ -102,9 +102,6 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
         app_variant: str,
         representation_id: str
     ):
-
-        from .networking import RVConnector
-
         representation = ayon_api.get_representation_by_id(
             project_name,
             representation_id,
@@ -114,24 +111,22 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
                 "Could not find representation by the provided id."
             )
 
-        rvcon = RVConnector()
-        if not rvcon.is_connected:
-            repre_path = get_representation_path(project_name, representation)
-            folder_path, task_name = (
-                self._get_launch_context_for_representation(
-                    project_name, representation
-                )
+        repre_path = get_representation_path(project_name, representation)
+        folder_path, task_name = (
+            self._get_launch_context_for_representation(
+                project_name, representation
             )
-            self._launch_openrv(
-                project_name,
-                folder_path,
-                task_name,
-                app_variant=app_variant,
-                workfile_path=repre_path,
-                # After opening unset the session filename to avoid user
-                # accidentally saving into the published file.
-                unset_session_filename=True,
-            )
+        )
+        self._launch_openrv(
+            project_name,
+            folder_path,
+            task_name,
+            app_variant=app_variant,
+            workfile_path=repre_path,
+            # After opening unset the session filename to avoid user
+            # accidentally saving into the published file.
+            unset_session_filename=True,
+        )
 
     def _get_launch_context_for_representation(
         self,
@@ -223,8 +218,5 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
             folder_path=folder_path,
             task_name=task_name,
             workfile_path=workfile_path,
-            # OpenRV must run with network mode enabled so it can receive
-            # the `ayon_load_container` event.
-            app_args=["-network"],
             env=env,
         )
