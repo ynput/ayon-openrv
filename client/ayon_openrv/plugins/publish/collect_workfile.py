@@ -1,8 +1,6 @@
 import os
 import pyblish.api
 
-from ayon_core.pipeline import registered_host
-
 
 class CollectWorkfile(pyblish.api.InstancePlugin):
     """Inject the current working file into context"""
