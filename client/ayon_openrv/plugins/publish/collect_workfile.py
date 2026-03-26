@@ -15,13 +15,9 @@ class CollectWorkfile(pyblish.api.InstancePlugin):
     def process(self, instance):
         """Inject the current working file"""
 
-        host = registered_host()
-        current_file = host.get_current_workfile() or ""
-
+        current_file = instance.context.data["currentFile"]
         folder, file = os.path.split(current_file)
         filename, ext = os.path.splitext(file)
-
-        instance.context.data["currentFile"] = current_file
 
         if not current_file:
             self.log.error("No current filepath detected. "
