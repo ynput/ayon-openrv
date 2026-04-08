@@ -10,12 +10,13 @@ from typing import Callable
 import rv.qtutils
 from ayon_api import get_representations
 from ayon_core.pipeline import (
-    discover_loader_plugins,
     get_current_project_name,
     install_host,
     load_container,
     registered_host,
 )
+from ayon_core.lib.transcoding import IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
+from ayon_core.pipeline.load import get_loaders_by_name
 from ayon_core.settings import get_project_settings
 from ayon_core.tools.utils import host_tools
 from ayon_openrv.api import OpenRVHost
@@ -270,7 +271,9 @@ def data_loader():
         with open(incoming_data_file, "rb") as file:
             decoded_data = json.load(file)
         os.remove(incoming_data_file)
-        load_data(dataset=decoded_data["representations"])
+        load_representations(
+            representation_ids=decoded_data["representations"]
+        )
     else:
         print("No data for auto-loader")
 
@@ -280,20 +283,32 @@ def on_ayon_load_container(event):
     handler.handle_event()
 
 
-def load_data(dataset=None):
+def load_representations(representation_ids: list[str]):
+    """Load media by representation id and pick the relevant loader."""
     project_name = get_current_project_name()
-    available_loaders = discover_loader_plugins(project_name)
-    Loader = next(
-        loader
-        for loader in available_loaders
-        if loader.__name__ == "FramesLoader"
-    )
+    loaders_by_name = get_loaders_by_name()
 
     representations = get_representations(
-        project_name, representation_ids=dataset
+        project_name, representation_ids=representation_ids
     )
-
     for representation in representations:
+        ext: str = (
+            representation.get("data", {}).get("context", {}).get("ext")
+            or representation["name"]
+        )
+        ext = f".{ext}"
+        if ext in VIDEO_EXTENSIONS:
+            loader_name = "MovLoader"
+        elif ext in IMAGE_EXTENSIONS:
+            loader_name = "FramesLoader"
+        else:
+            # Fallback
+            logging.warning(
+                "Unknown media extension: %s. Falling back to 'FramesLoader'",
+                ext
+            )
+            loader_name = "FramesLoader"
+        Loader = loaders_by_name.get(loader_name)
         load_container(Loader, representation)
 
 

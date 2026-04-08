@@ -88,6 +88,28 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
                 help="Published RV workfile representation id",
             )
         )
+        (
+            main_group.command(
+                self._cli_open_in_rv,
+                name="open-in-rv",
+                help=(
+                    "Open a published RV workfile or media representation"
+                    " in OpenRV"
+                ),
+            )
+            .option("--project_name", required=True, help="Project name")
+            .option(
+                "--app_variant",
+                required=False,
+                default=None,
+                help="OpenRV app variant full name (e.g. openrv/2025)",
+            )
+            .option(
+                "--representation_id",
+                required=True,
+                help="Published representation id",
+            )
+        )
         addon_click_group.add_command(main_group.to_click_obj())
 
     def _cli_main(self):
@@ -128,10 +150,52 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
             unset_session_filename=True,
         )
 
+    def _cli_open_in_rv(
+        self,
+        project_name: str,
+        app_variant: str,
+        representation_id: str,
+    ):
+        representation = ayon_api.get_representation_by_id(
+            project_name,
+            representation_id,
+        )
+        if representation is None:
+            raise RuntimeError(
+                "Could not find representation by the provided id."
+            )
+
+        folder_path, task_name = (
+            self._get_launch_context_for_representation(
+                project_name, representation
+            )
+        )
+
+        if representation["name"] == "rv":
+            repre_path = get_representation_path(project_name, representation)
+            self._launch_openrv(
+                project_name,
+                folder_path,
+                task_name,
+                app_variant=app_variant,
+                workfile_path=repre_path,
+                unset_session_filename=True,
+            )
+        else:
+            self._launch_openrv(
+                project_name,
+                folder_path,
+                task_name,
+                app_variant=app_variant,
+                # Used by pre_ftrackdata prelaunch hook to load on launch
+                extra=[representation_id],
+                start_last_workfile=False
+            )
+
     def _get_launch_context_for_representation(
         self,
         project_name: str,
-        representation: str
+        representation: dict[str, str],
     ) -> Tuple[str, str]:
         version = ayon_api.get_version_by_id(
             project_name,
@@ -188,6 +252,8 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
         app_variant=None,
         workfile_path=None,
         unset_session_filename=False,
+        extra_app_args=None,
+        **kwargs,
     ):
         from ayon_applications import ApplicationManager
 
@@ -212,11 +278,15 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
         if unset_session_filename:
             env["AYON_RV_UNSET_SESSION"] = "1"
 
-        app_manager.launch(
-            app_name,
+        launch_kwargs = dict(
             project_name=project_name,
             folder_path=folder_path,
             task_name=task_name,
             workfile_path=workfile_path,
             env=env,
+            **kwargs,
         )
+        if extra_app_args:
+            launch_kwargs["app_args"] = extra_app_args
+
+        app_manager.launch(app_name, **launch_kwargs)
