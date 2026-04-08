@@ -252,7 +252,6 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
         app_variant=None,
         workfile_path=None,
         unset_session_filename=False,
-        extra_app_args=None,
         **kwargs,
     ):
         from ayon_applications import ApplicationManager
@@ -286,7 +285,4 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
             env=env,
             **kwargs,
         )
-        if extra_app_args:
-            launch_kwargs["app_args"] = extra_app_args
-
         app_manager.launch(app_name, **launch_kwargs)
