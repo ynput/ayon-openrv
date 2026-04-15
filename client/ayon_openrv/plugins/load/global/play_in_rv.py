@@ -19,7 +19,8 @@ class PlayInRV(load.LoaderPlugin):
     It expects to be run only on representations published to any task!
     """
 
-    product_types = {"*"}
+    product_base_types = {"*"}
+    product_types = product_base_types
     representations = {"*"}
     extensions = {
         ext.lstrip(".")
