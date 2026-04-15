@@ -204,11 +204,11 @@ class AYONMenus(MinorMode):
         review_desktop = project_settings.get("review_desktop", {})
         if not review_desktop.get("enabled", False):
             return
-        # import review desktop controler
+        # import review desktop controller
         try:
-            from ayon_review_desktop import ReviewController
+            from ayon_review_desktop.session_controller import ReviewController
         except ImportError:
-            print("Failed to import 'ayon_review_desktop':")
+            print("Failed to import 'ayon_review_desktop.session_controller':")
             traceback.print_exc()
             return
         # instance controler and return the menu items.
