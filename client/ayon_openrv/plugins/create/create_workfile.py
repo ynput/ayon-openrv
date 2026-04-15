@@ -12,7 +12,8 @@ from ayon_core.pipeline import (
 
 class OpenRVWorkfileCreator(AutoCreator):
     identifier = "workfile"
-    product_type = "workfile"
+    product_base_type = "workfile"
+    product_type = product_base_type
     label = "Workfile"
 
     default_variant = "Main"
@@ -31,6 +32,7 @@ class OpenRVWorkfileCreator(AutoCreator):
 
         product_name = data["productName"]
         instance = CreatedInstance(
+            product_base_type=self.product_base_type,
             product_type=self.product_type,
             product_name=product_name,
             data=data,
@@ -49,7 +51,7 @@ class OpenRVWorkfileCreator(AutoCreator):
     def create(self, options=None):
         existing_instance = None
         for instance in self.create_context.instances:
-            if instance.product_type == self.product_type:
+            if instance.product_base_type == self.product_base_type:
                 existing_instance = instance
                 break
 
@@ -92,7 +94,11 @@ class OpenRVWorkfileCreator(AutoCreator):
             ))
 
             new_instance = CreatedInstance(
-                self.product_type, product_name, data, self
+                product_base_type=self.product_base_type,
+                product_type=self.product_type,
+                product_name=product_name,
+                data=data,
+                creator=self,
             )
             self._add_instance_to_context(new_instance)
 

@@ -20,7 +20,8 @@ class FramesLoader(load.LoaderPlugin):
     """Load frames into OpenRV."""
 
     label = "Load Frames"
-    product_types: ClassVar[set] = {"*"}
+    product_base_types: ClassVar[set] = {"*"}
+    product_types = product_base_types
     representations: ClassVar[set] = {"*"}
     extensions: ClassVar[set] = {ext.lstrip(".") for ext in IMAGE_EXTENSIONS}
     order = 0
