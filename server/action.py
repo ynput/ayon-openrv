@@ -106,7 +106,7 @@ async def _get_media_representations(
     return await Postgres.fetch(query, version_id, list(MEDIA_EXTENSIONS))
 
 
-async def _get_openrv_variant_options(
+async def _get_openrv_app_options(
     settings_variant: str,
 ) -> list[tuple[str, str]]:
     library = AddonLibrary.getinstance()
@@ -227,13 +227,13 @@ async def execute_open_in_rv_action(
             ),
         )
 
-    app_variant = form_data.get("app_variant")
-    variant_options = await _get_openrv_variant_options(executor.variant)
-    if not app_variant and len(variant_options) == 1:
-        app_variant = variant_options[0][0]
+    app_name = form_data.get("app_name")
+    app_options = await _get_openrv_app_options(executor.variant)
+    if not app_name and len(app_options) == 1:
+        app_name = app_options[0][0]
 
-    if not app_variant:
-        if not variant_options:
+    if not app_name:
+        if not app_options:
             return await executor.get_simple_response(
                 success=False,
                 message=(
@@ -244,16 +244,16 @@ async def execute_open_in_rv_action(
 
         form.label("Select OpenRV version to launch")
         form.select(
-            name="app_variant",
+            name="app_name",
             label="OpenRV variant",
             options=[
                 FormSelectOption(
                     value=value,
                     label=label,
                 )
-                for value, label in variant_options
+                for value, label in app_options
             ],
-            value=variant_options[0][0],
+            value=app_options[0][0],
         )
         return await executor.get_form_response(
             success=True,
@@ -261,8 +261,8 @@ async def execute_open_in_rv_action(
             fields=form,
         )
 
-    allowed_variants = {value for value, _ in variant_options}
-    if app_variant not in allowed_variants:
+    allowed_apps = {value for value, _ in app_options}
+    if app_name not in allowed_apps:
         return await executor.get_simple_response(
             success=False,
             message="Selected OpenRV variant is not available.",
