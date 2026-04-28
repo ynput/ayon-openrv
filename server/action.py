@@ -272,7 +272,7 @@ async def execute_open_in_rv_action(
         args=[
             "addon",
             "openrv",
-            "open-in-rv",
+            "open-representation",
             "--project",
             project_name,
             "--app",
