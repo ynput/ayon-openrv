@@ -77,15 +77,15 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
             )
             .option("--project", required=True, help="Project name")
             .option(
+                "--representation",
+                required=True,
+                help="Published RV workfile representation id",
+            )
+            .option(
                 "--app",
                 required=False,
                 default=None,
                 help="OpenRV app variant full name (e.g. openrv/2025)",
-            )
-            .option(
-                "--representation",
-                required=True,
-                help="Published RV workfile representation id",
             )
         )
         (
@@ -99,15 +99,15 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
             )
             .option("--project", required=True, help="Project name")
             .option(
+                "--representation",
+                required=True,
+                help="Published representation id",
+            )
+            .option(
                 "--app",
                 required=False,
                 default=None,
                 help="OpenRV app variant full name (e.g. openrv/2025)",
-            )
-            .option(
-                "--representation",
-                required=True,
-                help="Published representation id",
             )
         )
         addon_click_group.add_command(main_group.to_click_obj())
