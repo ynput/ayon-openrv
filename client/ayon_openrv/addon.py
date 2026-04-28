@@ -191,9 +191,7 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
                 folder_path,
                 task_name,
                 app_name=app,
-                # Used by pre_ftrackdata prelaunch hook to load on launch
-                extra=[representation],
-                start_last_workfile=False
+                representation_id=representation,
             )
 
     def _get_launch_context_for_representation(
@@ -257,7 +255,7 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
         app_name: str | None = None,
         workfile_path: str | None = None,
         unset_session_filename: bool = False,
-        **kwargs,
+        representation_id: str | None = None,
     ):
         from ayon_applications import ApplicationManager
 
@@ -286,6 +284,10 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
             task_name=task_name,
             workfile_path=workfile_path,
             env=env,
-            **kwargs,
         )
+        # Used by prelaunch hook to load on launch
+        if representation_id is not None:
+            launch_kwargs["representation_ids"] = [representation_id]
+            launch_kwargs["start_last_workfile"] = False
+
         app_manager.launch(app_name, **launch_kwargs)

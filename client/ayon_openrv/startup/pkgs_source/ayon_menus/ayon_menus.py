@@ -267,15 +267,22 @@ class AYONMenus(MinorMode):
 
 def data_loader():
     incoming_data_file = os.environ.get("AYON_LOADER_REPRESENTATIONS", None)
-    if incoming_data_file:
-        with open(incoming_data_file, "rb") as file:
-            decoded_data = json.load(file)
-        os.remove(incoming_data_file)
-        load_representations(
-            representation_ids=decoded_data["representations"]
-        )
-    else:
+    if not incoming_data_file:
         print("No data for auto-loader")
+        return
+
+    if not os.path.exists(incoming_data_file):
+        print(
+            f"No data for auto-loader, file not found '{incoming_data_file}'."
+        )
+        return
+
+    with open(incoming_data_file, "rb") as file:
+        decoded_data = json.load(file)
+    os.remove(incoming_data_file)
+    load_representations(
+        representation_ids=decoded_data["representation_ids"]
+    )
 
 
 def on_ayon_load_container(event):
