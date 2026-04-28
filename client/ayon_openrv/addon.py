@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 from typing import Tuple
 
@@ -198,7 +200,7 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
         self,
         project_name: str,
         representation: dict[str, str],
-    ) -> Tuple[str, str]:
+    ) -> tuple[str, str]:
         version = ayon_api.get_version_by_id(
             project_name,
             representation["versionId"],
@@ -248,12 +250,13 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
 
     def _launch_openrv(
         self,
-        project_name,
-        folder_path,
-        task_name,
-        app_name=None,
-        workfile_path=None,
-        unset_session_filename=False,
+        project_name: str,
+        folder_path: str,
+        task_name: str,
+        *,
+        app_name: str | None = None,
+        workfile_path: str | None = None,
+        unset_session_filename: bool = False,
         **kwargs,
     ):
         from ayon_applications import ApplicationManager
