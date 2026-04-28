@@ -75,37 +75,37 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
                 name="open-workfile",
                 help="Open a published RV workfile in OpenRV",
             )
-            .option("--project_name", required=True, help="Project name")
+            .option("--project", required=True, help="Project name")
             .option(
-                "--app_variant",
+                "--app",
                 required=False,
                 default=None,
                 help="OpenRV app variant full name (e.g. openrv/2025)",
             )
             .option(
-                "--representation_id",
+                "--representation",
                 required=True,
                 help="Published RV workfile representation id",
             )
         )
         (
             main_group.command(
-                self._cli_open_in_rv,
-                name="open-in-rv",
+                self._cli_open_representation,
+                name="open-representation",
                 help=(
                     "Open a published RV workfile or media representation"
                     " in OpenRV"
                 ),
             )
-            .option("--project_name", required=True, help="Project name")
+            .option("--project", required=True, help="Project name")
             .option(
-                "--app_variant",
+                "--app",
                 required=False,
                 default=None,
                 help="OpenRV app variant full name (e.g. openrv/2025)",
             )
             .option(
-                "--representation_id",
+                "--representation",
                 required=True,
                 help="Published representation id",
             )
@@ -120,64 +120,66 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
 
     def _cli_open_workfile(
         self,
-        project_name: str,
-        app_variant: str,
-        representation_id: str
+        project: str,
+        app: str,
+        representation: str
     ):
-        representation = ayon_api.get_representation_by_id(
+        project_name = project
+        repre_entity = ayon_api.get_representation_by_id(
             project_name,
-            representation_id,
+            representation,
         )
-        if representation is None:
+        if repre_entity is None:
             raise RuntimeError(
                 "Could not find representation by the provided id."
             )
 
-        repre_path = get_representation_path(project_name, representation)
+        repre_path = get_representation_path(project_name, repre_entity)
         folder_path, task_name = (
             self._get_launch_context_for_representation(
-                project_name, representation
+                project_name, repre_entity
             )
         )
         self._launch_openrv(
             project_name,
             folder_path,
             task_name,
-            app_variant=app_variant,
+            app_name=app,
             workfile_path=repre_path,
             # After opening unset the session filename to avoid user
             # accidentally saving into the published file.
             unset_session_filename=True,
         )
 
-    def _cli_open_in_rv(
+    def _cli_open_representation(
         self,
-        project_name: str,
-        app_variant: str,
-        representation_id: str,
+        project: str,
+        app: str,
+        representation: str,
     ):
-        representation = ayon_api.get_representation_by_id(
+        project_name = project
+        repre_entity = ayon_api.get_representation_by_id(
             project_name,
-            representation_id,
+            representation,
         )
-        if representation is None:
+        if repre_entity is None:
             raise RuntimeError(
                 "Could not find representation by the provided id."
             )
 
         folder_path, task_name = (
             self._get_launch_context_for_representation(
-                project_name, representation
+                project_name, repre_entity
             )
         )
 
-        if representation["name"] == "rv":
-            repre_path = get_representation_path(project_name, representation)
+        if repre_entity["name"] == "rv":
+            repre_path = get_representation_path(project_name, repre_entity)
             self._launch_openrv(
                 project_name,
                 folder_path,
                 task_name,
-                app_variant=app_variant,
+                app_name=app,
                 workfile_path=repre_path,
                 unset_session_filename=True,
             )
@@ -186,9 +188,9 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
                 project_name,
                 folder_path,
                 task_name,
-                app_variant=app_variant,
+                app_name=app,
                 # Used by pre_ftrackdata prelaunch hook to load on launch
-                extra=[representation_id],
+                extra=[representation],
                 start_last_workfile=False
             )
 
@@ -249,7 +251,7 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
         project_name,
         folder_path,
         task_name,
-        app_variant=None,
+        app_name=None,
         workfile_path=None,
         unset_session_filename=False,
         **kwargs,
@@ -257,9 +259,7 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
         from ayon_applications import ApplicationManager
 
         app_manager = ApplicationManager()
-        if app_variant:
-            app_name = app_variant
-        else:
+        if not app_name:
             openrv_app = app_manager.find_latest_available_variant_for_group(
                 "openrv"
             )
