@@ -212,11 +212,12 @@ async def execute_open_in_rv_action(
                     success=True,
                     title="Select representation to open in RV",
                     fields=form,
+                    form_data=form_data,
                 )
             representation_id = media_repres[0]["id"]
 
-        # Store the representation_id
-        form.hidden("representation_id", value=representation_id)
+    # Store the representation_id
+    form.hidden("representation_id", value=representation_id)
 
     if representation_id is None:
         return await executor.get_simple_response(
@@ -259,6 +260,7 @@ async def execute_open_in_rv_action(
             success=True,
             title="Select OpenRV variant",
             fields=form,
+            form_data=form_data,
         )
 
     allowed_apps = {value for value, _ in app_options}
