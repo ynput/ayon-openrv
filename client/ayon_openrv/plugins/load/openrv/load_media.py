@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from typing import ClassVar
+from typing import ClassVar, Any
 
 from ayon_core.lib.transcoding import IMAGE_EXTENSIONS
 from ayon_core.pipeline import load
@@ -34,7 +34,7 @@ class BaseMediaLoader(load.LoaderPlugin):
         namespace: str | None = None,
         options: dict | None = None,
     ) -> None:
-        """Load the frames into OpenRV."""
+        """Load frames or video into OpenRV."""
         filepath = self.filepath_from_context(context)
 
         rep_name = os.path.basename(filepath)
@@ -202,7 +202,6 @@ class BaseMediaLoader(load.LoaderPlugin):
                 self.log.info(f"Removing: {source_node_name}")
                 rv.commands.deleteNode(node_group)
 
-        rv.commands.reload()
         # switch node is child of some other node. find its parent node
         parent_node = rv.commands.nodeGroup(switch_node)
         if parent_node:
