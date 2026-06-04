@@ -62,7 +62,7 @@ class BaseMediaLoader(load.LoaderPlugin):
         )
 
         rv.commands.sendInternalEvent(
-            "ayon-source-loaded", str(node), "FramesLoader"
+            "ayon-source-loaded", str(node), self.__class__.__name__
         )
 
     def _finalize_loaded_node(self, loaded_node, rep_name, filepath, context):
