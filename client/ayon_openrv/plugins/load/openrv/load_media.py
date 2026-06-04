@@ -1,9 +1,11 @@
+"""Loader for image sequences and single frames in OpenRV."""
+
 from __future__ import annotations
 
-import rv
 import os
 from typing import ClassVar
 
+from ayon_core.lib.transcoding import IMAGE_EXTENSIONS
 from ayon_core.pipeline import load
 from ayon_openrv.api.ocio import (
     set_group_ocio_active_state,
@@ -11,19 +13,19 @@ from ayon_openrv.api.ocio import (
 )
 from ayon_openrv.api.pipeline import imprint_container
 
+import rv
+import rv.extra_commands
 
-class MovLoader(load.LoaderPlugin):
-    """Load mov into OpenRV"""
 
-    label = "Load MOV"
+class BaseMediaLoader(load.LoaderPlugin):
+    """Base class for the media loaders."""
+    skip_discovery = True  # mark as base class
+
     product_base_types: ClassVar[set] = {"*"}
     product_types = product_base_types
     representations: ClassVar[set] = {"*"}
-    extensions: ClassVar[set] = {"mov", "mp4"}
-    order = 0
 
-    icon = "code-fork"
-    color = "orange"
+    order = 0
 
     def load(
         self,
@@ -32,13 +34,21 @@ class MovLoader(load.LoaderPlugin):
         namespace: str | None = None,
         options: dict | None = None,
     ) -> None:
+        """Load the frames into OpenRV."""
         filepath = self.filepath_from_context(context)
-        namespace = namespace if namespace else context["folder"]["name"]
+
         rep_name = os.path.basename(filepath)
 
+        # change path
+        namespace = namespace or context["folder"]["name"]
         loaded_node = rv.commands.addSourceVerbose([filepath])
 
-        node = self._finalize_loaded_node(loaded_node, rep_name, filepath)
+        node = self._finalize_loaded_node(
+            loaded_node,
+            rep_name,
+            filepath,
+            context
+        )
 
         # update colorspace
         self.set_representation_colorspace(node, context["representation"])
@@ -52,14 +62,14 @@ class MovLoader(load.LoaderPlugin):
         )
 
         rv.commands.sendInternalEvent(
-            "ayon-source-loaded", str(node), "MovLoader"
+            "ayon-source-loaded", str(node), "FramesLoader"
         )
 
-    def _finalize_loaded_node(self, loaded_node, rep_name, filepath):
+    def _finalize_loaded_node(self, loaded_node, rep_name, filepath, context):
         """Finalize the loaded node in OpenRV.
 
         We are organizing all loaded sources under a switch group so we can
-        let user switch between versions later on. Every new updated verion is
+        let user switch between versions later on. Every new updated version is
         added as new media representation under the switch group.
 
         We are removing firstly added source since it does not have a name.
@@ -68,6 +78,8 @@ class MovLoader(load.LoaderPlugin):
             loaded_node (str): The node that was loaded.
             rep_name (str): The name of the representation.
             filepath (str): The path of the representation.
+            context (dict[str, dict[str, Any]]): The context of the loaded
+                representation.
 
         Returns:
             str: The node that was loaded.
@@ -75,39 +87,65 @@ class MovLoader(load.LoaderPlugin):
         """
         node = loaded_node
 
-        rv.commands.addSourceMediaRep(loaded_node, rep_name, [filepath])
+        self._add_source_media_rep(node, rep_name, filepath)
+
         rv.commands.setActiveSourceMediaRep(
             loaded_node,
             rep_name,
         )
         switch_node = rv.commands.sourceMediaRepSwitchNode(loaded_node)
-        node_type = rv.commands.nodeType(switch_node)
 
-        for node in rv.commands.sourceMediaRepsAndNodes(switch_node):
-            source_node_name = node[0]
-            source_node = node[1]
+        for (
+            source_node_name,
+            source_node,
+        ) in rv.commands.sourceMediaRepsAndNodes(switch_node):
             node_type = rv.commands.nodeType(source_node)
-            node_gorup = rv.commands.nodeGroup(source_node)
+            node_group = rv.commands.nodeGroup(source_node)
 
-            # we are removing the firstly added wource since it does not have
-            # a name and we don't want to confuse the user with multiple
+            # We are removing the first added source since it does not have
+            # a name, and we don't want to confuse the user with multiple
             # versions of the same source but one of them without a name
             if node_type == "RVFileSource" and source_node_name == "":
-                rv.commands.deleteNode(node_gorup)
+                rv.commands.deleteNode(node_group)
             else:
                 node = source_node
                 break
 
-        rv.commands.setStringProperty(f"{node}.media.name", [rep_name], True)
+        # Rename the switch node and group as well for better debugging
+        folder = context["folder"]
+        product = context["product"]
+        label = f"{folder['path']} > {product['name']}"
+        rv.extra_commands.setUIName(
+            switch_node,
+            f"{label} Switch"
+        )
+        rv.extra_commands.setUIName(
+            rv.commands.nodeGroup(switch_node),
+            f"{label} Switch Group"
+        )
 
         rv.commands.reload()
         return node
 
+    def _add_source_media_rep(self, node, rep_name, filepath):
+        """Add source media representation to the node."""
+        # Add source to the media rep to add it to the `switch node`
+        added_source = rv.commands.addSourceMediaRep(
+            node,
+            rep_name,
+            [filepath],
+        )
+
+        # Avoid long names on the added source media rep
+        rv.extra_commands.setUIName(
+            rv.commands.nodeGroup(added_source),
+            rep_name
+        )
+
     def update(self, container, context):
         node = container["node"]
-        filepath = rv.commands.sequenceOfFile(
-            self.filepath_from_context(context)
-        )[0]
+
+        filepath = self.filepath_from_context(context)
 
         repre_entity = context["representation"]
 
@@ -116,17 +154,20 @@ class MovLoader(load.LoaderPlugin):
         self.log.warning(f">> source_reps: {source_reps}")
 
         if new_rep_name not in source_reps:
-            # change path
-            rv.commands.addSourceMediaRep(node, new_rep_name, [filepath])
+            # add version to the switch group if it's not there yet
+            self._add_source_media_rep(node, new_rep_name, filepath)
         else:
-            self.log.warning(">> new_rep_name already in source_reps")
+            self.log.warning(
+                f"New rep name already in source_reps: {new_rep_name}"
+            )
 
+        # activate the new version in the switch group
         rv.commands.setActiveSourceMediaRep(
             node,
             new_rep_name,
         )
         source_rep_name = rv.commands.sourceMediaRep(node)
-        self.log.info(f"New source_rep_name: {source_rep_name}")
+        self.log.debug(f"New source_rep_name: {source_rep_name}")
 
         # update colorspace
         representation = context["representation"]
@@ -140,23 +181,38 @@ class MovLoader(load.LoaderPlugin):
         )
         rv.commands.reload()
 
-    def remove(self, container):
+    def remove(self, container: dict) -> None:  # noqa: PLR6301
+        """Remove loaded container."""
         node = container["node"]
         # since we are organizing all loaded sources under a switch group
         # we need to remove all the source nodes organized under it
         switch_node = rv.commands.sourceMediaRepSwitchNode(node)
-        for node_data in rv.commands.sourceMediaRepsAndNodes(switch_node):
-            source_node_name = node_data[0]
-            source_node = node_data[1]
+        if not switch_node:
+            # just in case someone removed it maunally
+            return
+
+        for (
+            source_node_name,
+            source_node
+        ) in rv.commands.sourceMediaRepsAndNodes(switch_node):
             node_type = rv.commands.nodeType(source_node)
             node_group = rv.commands.nodeGroup(source_node)
 
             if node_type == "RVFileSource":
-                self.log.warning(f">> node_type: {node_type}")
-                self.log.warning(f">> source_node_name: {source_node_name}")
+                self.log.info(f"Removing: {source_node_name}")
                 rv.commands.deleteNode(node_group)
 
         rv.commands.reload()
+        # switch node is child of some other node. find its parent node
+        parent_node = rv.commands.nodeGroup(switch_node)
+        if parent_node:
+            self.log.info(f"Removing: {parent_node}")
+            rv.commands.deleteNode(parent_node)
+
+        rv.commands.reload()
+
+    def switch(self, container, context):
+        self.update(container, context)
 
     def set_representation_colorspace(self, node, representation):
         colorspace_data = representation.get("data", {}).get("colorspaceData")
@@ -172,5 +228,28 @@ class MovLoader(load.LoaderPlugin):
             set_group_ocio_active_state(group, state=True)
             set_group_ocio_colorspace(group, colorspace)
 
-    def switch(self, container, context):
-        self.update(container, context)
+
+class FramesLoader(BaseMediaLoader):
+    """Load frames into OpenRV."""
+
+    label = "Load Frames"
+    extensions: ClassVar[set] = {ext.lstrip(".") for ext in IMAGE_EXTENSIONS}
+
+    icon = "code-fork"
+    color = "orange"
+
+    @classmethod
+    def filepath_from_context(cls, context):
+        return rv.commands.sequenceOfFile(
+            super().filepath_from_context(context)
+        )[0]
+
+
+class MovLoader(BaseMediaLoader):
+    """Load mov into OpenRV"""
+
+    label = "Load MOV"
+    extensions: ClassVar[set] = {"mov", "mp4"}
+
+    icon = "code-fork"
+    color = "orange"
