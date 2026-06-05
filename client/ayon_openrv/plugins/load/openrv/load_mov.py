@@ -4,6 +4,7 @@ import rv
 import os
 from typing import ClassVar
 
+from ayon_core.lib import EnumDef
 from ayon_core.pipeline import load
 from ayon_openrv.api.ocio import (
     set_group_ocio_active_state,
@@ -13,7 +14,7 @@ from ayon_openrv.api.pipeline import imprint_container
 
 
 class MovLoader(load.LoaderPlugin):
-    """Load mov into OpenRV"""
+    """Load MOV into OpenRV"""
 
     label = "Load MOV"
     product_base_types: ClassVar[set] = {"*"}
@@ -24,6 +25,19 @@ class MovLoader(load.LoaderPlugin):
 
     icon = "code-fork"
     color = "orange"
+
+    options = [
+        EnumDef(
+            "load_mode",
+            label="Load Mode",
+            items=["switch", "append"],
+            default="switch",
+            tooltip=(
+                "switch: Switch to newly loaded source (makes it active view)\n"
+                "append: Append to timeline (original RV behavior)"
+            ),
+        )
+    ]
 
     def load(
         self,
@@ -50,6 +64,14 @@ class MovLoader(load.LoaderPlugin):
             context=context,
             loader=self.__class__.__name__,
         )
+
+        # Handle load mode from options
+        load_mode = options.get("load_mode", "switch") if options else "switch"
+        if load_mode == "switch":
+            # Switch to the newly loaded source
+            group = rv.commands.nodeGroup(node)
+            rv.commands.setViewNode(group)
+        # else: append mode - do nothing, let RV build sequence naturally
 
         rv.commands.sendInternalEvent(
             "ayon-source-loaded", str(node), "MovLoader"
@@ -174,3 +196,4 @@ class MovLoader(load.LoaderPlugin):
 
     def switch(self, container, context):
         self.update(container, context)
+
