@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from typing import ClassVar, Any
+from typing import ClassVar
 
 from ayon_core.lib.transcoding import IMAGE_EXTENSIONS
 from ayon_core.pipeline import load
