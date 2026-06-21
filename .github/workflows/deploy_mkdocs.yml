@@ -4,8 +4,6 @@ on:
   push:
     tags:
       - "*"
-    branches:
-      - "chore/85-change-title-of-mk-docs"
   workflow_dispatch:
 
 jobs:
