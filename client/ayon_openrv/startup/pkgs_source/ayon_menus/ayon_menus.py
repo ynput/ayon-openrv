@@ -19,6 +19,9 @@ from ayon_core.settings import get_project_settings
 from ayon_core.tools.utils import host_tools
 from ayon_openrv.api import OpenRVHost
 from ayon_openrv.networking import LoadContainerHandler
+from ayon_openrv.plugins.load.openrv.open_source_workfile import (
+    open_source_workfile,
+)
 from qtpy.QtCore import QEvent, QObject, QTimer
 from qtpy.QtWidgets import QApplication
 from rv.rvtypes import MinorMode
@@ -177,6 +180,10 @@ class AYONMenus(MinorMode):
     def library(self, event):
         host_tools.show_library_loader(parent=self._parent)
 
+    def open_source_workfile(self, event=None):
+        """Open source workfile for the currently viewed representation."""
+        open_source_workfile(parent_widget=self._parent)
+
     def _on_app_closing(self):
         self._is_closing = True
 
@@ -236,6 +243,7 @@ class AYONMenus(MinorMode):
             ("Library...", self.library, None, None),
             ("_", None),  # separator
             ("Work Files...", self.workfiles, None, None),
+            ("Open Source Workfile...", self.open_source_workfile, None, None),
         ]
         # Add Activity Stream menu item if enabled in project settings
         self.add_desktop_review_menu_items(menu)
