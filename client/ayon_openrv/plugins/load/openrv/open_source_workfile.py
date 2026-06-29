@@ -198,12 +198,44 @@ def launch_source_workfile_from_representation(
 
     folder_path, task_name = _resolve_launch_context(project_name, version)
 
+    # Build a clean env for the DCC launch.
+    # Filter out ALL OpenRV-specific PYTHONPATH entries using two prefixes:
+    #   1. rv_root  = dirname(dirname(sys.executable)) e.g. C:\OpenRV_3.1.0
+    #   2. RV_SUPPORT_PATH = the temp dir with deployed RV packages
+    # PYTHONHOME (set by OpenRV to its own root) is also removed; it would
+    # redirect the DCC's Python to look in the wrong location.
+    import sys
+    _rv_root = os.path.normpath(
+        os.path.dirname(os.path.dirname(sys.executable))
+    )
+    _rv_support = os.path.normpath(
+        os.environ.get("RV_SUPPORT_PATH", "\x00no_match\x00")
+    )
+    _orig_pp = os.environ.get("PYTHONPATH", "")
+
+    def _keep_path(p):
+        n = os.path.normpath(p)
+        return not n.startswith(_rv_root) and not n.startswith(_rv_support)
+
+    launch_env = os.environ.copy()
+    launch_env["PYTHONPATH"] = os.pathsep.join(
+        p for p in _orig_pp.split(os.pathsep) if p and _keep_path(p)
+    )
+    for _key in (
+        "PYTHONHOME",
+        "RV_SUPPORT_PATH", "AYON_HOST_NAME",
+        "AYON_WORKDIR", "AYON_PROJECT_NAME",
+        "AYON_FOLDER_PATH", "AYON_TASK_NAME", "AYON_TASK_TYPE",
+    ):
+        launch_env.pop(_key, None)
+
     app_manager.launch(
         app_name,
         project_name=project_name,
         folder_path=folder_path,
         task_name=task_name,
         workfile_path=workfile_path,
+        env=launch_env,
     )
 
     return app_name, workfile_path
