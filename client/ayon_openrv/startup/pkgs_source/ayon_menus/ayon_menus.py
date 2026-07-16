@@ -103,6 +103,8 @@ class AYONMenus(MinorMode):
     def __init__(self):
         MinorMode.__init__(self)
 
+        self.review_controller = None
+
         bindings: list[tuple[str, Callable, str]] = [
             # event name, callback, description
             (
@@ -169,14 +171,18 @@ class AYONMenus(MinorMode):
         )
 
     def _open_visible_panels(self, event):
+        """Re-open desktop review panels that were visible last session."""
         event.reject()
+        if self.review_controller is None:
+            return
+
         self._panel_startup_visibility: list[str] = (
             self._read_panel_startup_visibility()
         )
 
         for panel_name in self._panel_startup_visibility:
             QTimer.singleShot(
-                0, lambda: self.open_desktop_review_panel(panel_name)
+                0, partial(self.open_desktop_review_panel, panel_name)
             )
 
     @property
@@ -202,6 +208,12 @@ class AYONMenus(MinorMode):
         self._is_closing = True
 
     def open_desktop_review_panel(self, panel_name: str, *_):
+        if self.review_controller is None:
+            raise RuntimeError(
+                "Unable to open desktop review panel because desktop review"
+                " has not been initialized."
+            )
+
         panel = self.review_controller.get_panel(panel_name)
         dock_widget = self.review_controller.set_docker_widget(
             self._parent, panel, panel_name
@@ -225,6 +237,7 @@ class AYONMenus(MinorMode):
         review_desktop = project_settings.get("review_desktop", {})
         if not review_desktop.get("enabled", False):
             return
+
         # import review desktop controller
         try:
             from ayon_review_desktop.session_controller import ReviewController
@@ -232,7 +245,8 @@ class AYONMenus(MinorMode):
             print("Failed to import 'ayon_review_desktop.session_controller':")
             traceback.print_exc()
             return
-        # instance controler and return the menu items.
+
+        # Instantiate controller and add menu items.
         self.review_controller = ReviewController(host="rv")
         menu.append(("_", None))  # separator
         for k, panel_name in enumerate(
