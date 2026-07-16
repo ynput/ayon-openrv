@@ -144,10 +144,12 @@ class AYONMenus(MinorMode):
 
     def _unset_session_filename(self, event=None):
         # Only ever run once
-        if not self._session_was_unset:
-            logging.debug("Unsetting session filename...")
-            rv.commands.setSessionFileName("")
-            self._session_was_unset = True
+        if self._session_was_unset:
+            return
+
+        self._session_was_unset = True
+        logging.debug("Unsetting session filename...")
+        rv.commands.setSessionFileName("")
 
     def _read_panel_startup_visibility(self):
         return rv.commands.readSettings("ayon", "panel_startup_visibility", [])
