@@ -162,7 +162,7 @@ class AYONMenus(MinorMode):
 
         for panel_name in self._panel_startup_visibility:
             QTimer.singleShot(
-                0, lambda: self.open_desktop_review_panel(panel_name)
+                0, partial(self.open_desktop_review_panel, panel_name)
             )
 
     @property
