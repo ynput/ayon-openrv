@@ -151,7 +151,7 @@ class AYONMenus(MinorMode):
         )
 
     def _open_visible_panels(self, event):
-        """Re-open the activity panel if it was opened last"""
+        """Re-open desktop review panels that were visible last session."""
         event.reject()
         if self.review_controller is None:
             return
@@ -226,7 +226,7 @@ class AYONMenus(MinorMode):
             traceback.print_exc()
             return
 
-        # instance controller and return the menu items.
+        # Instantiate controller and add menu items.
         self.review_controller = ReviewController(host="rv")
         menu.append(("_", None))  # separator
         for k, panel_name in enumerate(
