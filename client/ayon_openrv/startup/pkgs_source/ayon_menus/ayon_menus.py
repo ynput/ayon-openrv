@@ -170,6 +170,10 @@ class AYONMenus(MinorMode):
 
     def _open_visible_panels(self, event):
         event.reject()
+
+        if not getattr(self, "review_controller", None):
+            return
+
         self._panel_startup_visibility: list[str] = (
             self._read_panel_startup_visibility()
         )

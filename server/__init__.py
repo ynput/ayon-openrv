@@ -1,11 +1,12 @@
-from typing import Optional, Type, TYPE_CHECKING
+from typing import Type, TYPE_CHECKING
 
-from ayon_server.actions import SimpleActionManifest
+from ayon_server.actions import DynamicActionManifest
 from ayon_server.addons import BaseServerAddon
 
 from .action import (
     execute_open_in_rv_action,
-    get_open_in_rv_simple_action,
+    get_open_in_rv_action,
+    can_open_in_rv,
 )
 from .settings import OpenRVSettings, DEFAULT_VALUES
 
@@ -20,12 +21,20 @@ class OpenRVAddon(BaseServerAddon):
         settings_model_cls = self.get_settings_model()
         return settings_model_cls(**DEFAULT_VALUES)
 
-    async def get_simple_actions(
+    async def get_dynamic_actions(
         self,
-        project_name: Optional[str] = None,
+        context,
         variant: str = "production",
-    ) -> list[SimpleActionManifest]:
-        return [get_open_in_rv_simple_action()]
+    ) -> list["DynamicActionManifest"]:
+        """Return dynamic actions for the given context.
+
+        The Open in RV action should only be shown when it is valid for the
+        selected version (i.e. when can_open_in_rv(context) is True).
+        """
+        actions = []
+        if await can_open_in_rv(context):
+            actions.append(get_open_in_rv_action())
+        return actions
 
     async def execute_action(
         self,
