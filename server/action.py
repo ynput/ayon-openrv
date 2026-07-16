@@ -1,10 +1,11 @@
 from typing import Optional, TYPE_CHECKING
 
-from ayon_server.actions import SimpleActionManifest
+from ayon_server.actions import DynamicActionManifest
 from ayon_server.addons.library import AddonLibrary
 from ayon_server.forms import SimpleForm
 from ayon_server.forms.simple_form import FormSelectOption
 from ayon_server.lib.postgres import Postgres
+from ayon_server.logging import logger
 
 if TYPE_CHECKING:
     from ayon_server.actions import ActionContext, ActionExecutor, ExecuteResponseModel
@@ -27,8 +28,8 @@ VIDEO_EXTENSIONS: frozenset[str] = frozenset({
 MEDIA_EXTENSIONS: frozenset[str] = IMAGE_EXTENSIONS | VIDEO_EXTENSIONS
 
 
-def get_open_in_rv_simple_action() -> SimpleActionManifest:
-    return SimpleActionManifest(
+def get_open_in_rv_action() -> DynamicActionManifest:
+    return DynamicActionManifest(
         identifier=ACTION_IDENTIFIER,
         label="Open in RV",
         category="Desktop tools",
@@ -38,14 +39,14 @@ def get_open_in_rv_simple_action() -> SimpleActionManifest:
             "name": "live_tv",
             "color": "#FFA500",
         },
-        entity_type="version",
-        entity_subtypes=None,
-        allow_multiselection=False,
     )
 
 
 async def can_open_in_rv(context: "ActionContext") -> bool:
     """Return True if the action can run for the given context."""
+
+    logger.info(f"Checking if can be opened in context: {context}")
+
     project_name = context.project_name
     entity_ids = context.entity_ids or []
     if not project_name:
