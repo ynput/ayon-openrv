@@ -1,4 +1,4 @@
-from typing import Optional, Type, TYPE_CHECKING
+from typing import Type, TYPE_CHECKING
 
 from ayon_server.actions import DynamicActionManifest
 from ayon_server.addons import BaseServerAddon
