@@ -7,6 +7,21 @@ from ayon_openrv.constants import OPENRV_ROOT_DIR
 from ayon_applications import PreLaunchHook
 from ayon_core.lib.execute import run_subprocess
 
+# OpenRV ships `rvpkg`, players built on top of it may rename it,
+#   e.g. OpenUTV ships `utvpkg`
+RVPKG_NAMES = ("rvpkg", "utvpkg")
+
+
+def find_rvpkg(executable_dir: Path) -> Path:
+    """Find the RV package manager executable next to the RV executable."""
+    for name in RVPKG_NAMES:
+        for filename in (name, f"{name}.exe"):
+            path = executable_dir / filename
+            if path.exists():
+                return path
+    # Fallback to `rvpkg` so a failure reports the expected executable
+    return executable_dir / "rvpkg"
+
 
 class PreGlobalTools(PreLaunchHook):
     """Pre-hook for openrv"""
@@ -17,7 +32,8 @@ class PreGlobalTools(PreLaunchHook):
 
         # We use the `rvpkg` executable next to the `rv` executable to
         # install and opt-in to the AYON plug-in packages
-        rvpkg = Path(os.path.dirname(str(executable))) / "rvpkg"
+        rvpkg = find_rvpkg(Path(os.path.dirname(str(executable))))
+        self.log.debug(f"Using package manager: {rvpkg}")
         packages_src_folder = Path(OPENRV_ROOT_DIR) / "startup" / "pkgs_source"
 
         # TODO: Are we sure we want to deploy the addons into a temporary
