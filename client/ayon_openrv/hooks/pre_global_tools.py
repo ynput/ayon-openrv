@@ -8,8 +8,9 @@ from ayon_applications import PreLaunchHook
 from ayon_core.lib.execute import run_subprocess
 
 # OpenRV ships `rvpkg`, players built on top of it may rename it,
-#   e.g. OpenUTV ships `utvpkg`
-RVPKG_NAMES = ("rvpkg", "utvpkg")
+#   e.g. OpenUTV ships `utvpkg` (but also `rvpkg` that may not load all its
+#   dependencies so we prioritize using `utvpkg` if it exists)
+RVPKG_NAMES = ("utvpkg", "rvpkg")
 
 
 def find_rvpkg(executable_dir: Path) -> Path:
