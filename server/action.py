@@ -313,10 +313,7 @@ async def execute_open_in_rv_action(
         representation_id,
     ]
     if use_existing_rv_instance:
-        args.append([
-            "--use-existing-rv-instance",
-             str(use_existing_rv_instance)
-        ])
+        args.append("--use-existing-rv-instance")
     return await executor.get_launcher_response(
         args=args,
         message="Launching OpenRV...",
