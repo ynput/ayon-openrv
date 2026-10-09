@@ -21,6 +21,7 @@ from ayon_core.pipeline import (
     get_representation_path,
     load_container,
 )
+from ayon_core.pipeline.load import LoadError
 
 from ayon_openrv.addon import OpenRVAddon
 from ayon_openrv.version import __version__
@@ -30,6 +31,33 @@ if TYPE_CHECKING:
 
 log = Logger.get_logger(__name__)
 
+
+def send_representation_to_existing_rv(project_name: str, representation: dict) -> None:
+    """Send representations to an existing RV instance.
+
+    Args:
+        project_name: The name of the project.
+        representation: The representation dictionary to send.
+    """
+    rv_connector = RVConnector()
+    if not rv_connector.is_connected:
+        raise LoadError(
+            "No existing OpenRV connection found."
+            " Make sure OpenRV is running and network connected."
+        )
+
+    payload = json.dumps([{
+        "objectName": representation["name"],
+        "representation":representation["id"],
+        "project": project_name,
+    }])
+    # This also retries the connection
+    with rv_connector:
+        rv_connector.send_event(
+            "ayon_load_container",
+            payload,
+            shall_return=False
+        )
 
 class RVConnector:
     """Manages socket connection to RV for remote control.
@@ -526,3 +554,4 @@ class LoadContainerHandler:
                     return
 
         log.warning(f"No loader found for extension: {extension}")
+

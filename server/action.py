@@ -11,6 +11,7 @@ if TYPE_CHECKING:
 
 
 ACTION_IDENTIFIER = "openrv.open_in_rv"
+EXISTING_ACTION_IDENTIFIER = "openrv.open_in_existing_rv"
 
 # Media file extensions supported by the action (without leading dot, lowercase).
 # These mirror IMAGE_EXTENSIONS and VIDEO_EXTENSIONS from ayon_core so that the
@@ -37,6 +38,22 @@ def get_open_in_rv_simple_action() -> SimpleActionManifest:
             "type": "material-symbols",
             "name": "live_tv",
             "color": "#FFA500",
+        },
+        entity_type="version",
+        entity_subtypes=None,
+        allow_multiselection=False,
+    )
+
+def get_open_in_existing_rv_simple_action() -> SimpleActionManifest:
+    return SimpleActionManifest(
+        identifier=EXISTING_ACTION_IDENTIFIER,
+        label="Open in Existing RV",
+        category="Desktop tools",
+        order=101,
+        icon={
+            "type": "material-symbols",
+            "name": "live_tv",
+            "color": "#DCEB58",
         },
         entity_type="version",
         entity_subtypes=None,
@@ -147,20 +164,29 @@ async def _get_openrv_app_options(
         )
     return output
 
+async def execute_openrv_action(
+        executor: "ActionExecutor",
+) -> "ExecuteResponseModel":
+    if executor.identifier in {
+        ACTION_IDENTIFIER,
+        EXISTING_ACTION_IDENTIFIER,
+    }:
+        existing_rv = False if executor.identifier == ACTION_IDENTIFIER else True
+        return await execute_open_in_rv_action(executor, use_existing_rv=existing_rv)
+    return await executor.get_simple_response(
+        success=False,
+        message=(
+            f"Unsupported action identifier: {executor.identifier}"
+        ),
+    )
+
 
 async def execute_open_in_rv_action(
     executor: "ActionExecutor",
+    use_existing_rv: bool = False,
 ) -> "ExecuteResponseModel":
+
     context = executor.context
-
-    if executor.identifier != ACTION_IDENTIFIER:
-        return await executor.get_simple_response(
-            success=False,
-            message=(
-                f"Unsupported action identifier: {executor.identifier}"
-            ),
-        )
-
     if context.entity_type != "version":
         return await executor.get_simple_response(
             success=False,
@@ -226,6 +252,20 @@ async def execute_open_in_rv_action(
                 "Selected version has no RV workfile or media representation"
                 " that can be opened in RV."
             ),
+        )
+
+    if use_existing_rv:
+        return await executor.get_launcher_response(
+            args=[
+                "addon",
+                "openrv",
+                "open-representation-in-existing-rv",
+                "--project",
+                project_name,
+                "--representation",
+                representation_id,
+            ],
+            message="Adding representation to existing RV session...",
         )
 
     app_name = form_data.get("app_name")

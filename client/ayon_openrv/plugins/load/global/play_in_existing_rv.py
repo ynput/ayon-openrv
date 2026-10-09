@@ -1,12 +1,9 @@
-import json
-
 from ayon_core.lib.transcoding import (
     IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
 )
 from ayon_core.pipeline import load
-from ayon_core.pipeline.load import LoadError
 
-from ayon_openrv.networking import RVConnector
+from ayon_openrv.networking import send_representation_to_existing_rv
 
 
 class PlayInExistingRV(load.LoaderPlugin):
@@ -30,21 +27,7 @@ class PlayInExistingRV(load.LoaderPlugin):
     color = "orange"
 
     def load(self, context, name, namespace, data):
-        rv_connector = RVConnector()
-        if not rv_connector.is_connected:
-            raise LoadError(
-                "No existing OpenRV connection found."
-                " Make sure OpenRV is running and network connected."
-            )
-
-        payload = json.dumps([{
-            "objectName": context["representation"]["name"],
-            "representation": context["representation"]["id"],
-        }])
-        # This also retries the connection
-        with rv_connector:
-            rv_connector.send_event(
-                "ayon_load_container",
-                payload,
-                shall_return=False
-            )
+        send_representation_to_existing_rv(
+            context["project"]["name"],
+            context["representation"]
+        )

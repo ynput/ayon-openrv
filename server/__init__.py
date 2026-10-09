@@ -4,7 +4,8 @@ from ayon_server.actions import SimpleActionManifest
 from ayon_server.addons import BaseServerAddon
 
 from .action import (
-    execute_open_in_rv_action,
+    execute_openrv_action,
+    get_open_in_existing_rv_simple_action,
     get_open_in_rv_simple_action,
 )
 from .settings import OpenRVSettings, DEFAULT_VALUES
@@ -25,10 +26,13 @@ class OpenRVAddon(BaseServerAddon):
         project_name: Optional[str] = None,
         variant: str = "production",
     ) -> list[SimpleActionManifest]:
-        return [get_open_in_rv_simple_action()]
+        return [
+            get_open_in_rv_simple_action(),
+            get_open_in_existing_rv_simple_action(),
+        ]
 
     async def execute_action(
         self,
         executor: "ActionExecutor",
     ) -> "ExecuteResponseModel":
-        return await execute_open_in_rv_action(executor)
+        return await execute_openrv_action(executor)
