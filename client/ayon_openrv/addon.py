@@ -11,6 +11,7 @@ from ayon_core.addon import (
     click_wrap,
     ensure_addons_are_process_ready,
 )
+from ayon_core.lib.transcoding import IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
 from ayon_core.pipeline import get_representation_path
 
 
@@ -117,6 +118,11 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
                 default=None,
                 help="OpenRV app variant full name (e.g. openrv/2025)",
             )
+            .option(
+                "--use-existing-rv-instance",
+                is_flag=True,
+                help="Use an existing OpenRV instance to open the representation",
+            )
         )
         addon_click_group.add_command(main_group.to_click_obj())
 
@@ -164,8 +170,15 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
         project: str,
         app: str,
         representation: str,
+        use_existing_rv_instance: bool = False,
     ):
         project_name = project
+        if use_existing_rv_instance:
+            return self._cli_open_representation_in_existing_rv(
+                project_name,
+                representation,
+            )
+
         repre_entity = ayon_api.get_representation_by_id(
             project_name,
             representation,
@@ -180,7 +193,6 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
                 project_name, repre_entity
             )
         )
-
         if repre_entity["name"] == "rv":
             repre_path = get_representation_path(project_name, repre_entity)
             self._launch_openrv(
@@ -199,6 +211,37 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
                 app_name=app,
                 representation_id=representation,
             )
+
+    def _cli_open_representation_in_existing_rv(
+        self,
+        project: str,
+        representation: str,
+    ):
+        from ayon_openrv.networking import send_representation_to_existing_rv
+
+        repre_entity = ayon_api.get_representation_by_id(
+            project, representation
+        )
+        if repre_entity is None:
+            raise RuntimeError(
+                "Could not find representation by the provided id."
+            )
+        extension = repre_entity.get("context", {}).get("ext")
+        if not extension:
+            repre_path = get_representation_path(project, repre_entity)
+            if not repre_path:
+                raise RuntimeError(
+                    "Could not resolve the representation's media extension."
+                )
+            extension = os.path.splitext(repre_path)[1]
+        extension = "." + extension.lstrip(".").lower()
+        if extension not in IMAGE_EXTENSIONS | VIDEO_EXTENSIONS:
+            raise RuntimeError(
+                f"Representation extension '{extension}' is not supported"
+                " in existing OpenRV. Only image and video representations"
+                " can be opened; RV workfiles require a new OpenRV instance."
+            )
+        send_representation_to_existing_rv(project, repre_entity)
 
     def _get_launch_context_for_representation(
         self,
@@ -284,12 +327,20 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
         if unset_session_filename:
             env["AYON_RV_UNSET_SESSION"] = "1"
 
+        network_settings = ayon_api.get_addon_settings(
+            self.name, self.version
+        )["network"]
         launch_kwargs = dict(
             project_name=project_name,
             folder_path=folder_path,
             task_name=task_name,
             workfile_path=workfile_path,
             env=env,
+            app_args=[
+                "-network",
+                "-networkPort",
+                str(network_settings.get("conn_port", 45124)),
+            ],
         )
         # Used by prelaunch hook to load on launch
         if representation_id is not None:

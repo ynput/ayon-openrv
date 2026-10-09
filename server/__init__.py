@@ -25,7 +25,9 @@ class OpenRVAddon(BaseServerAddon):
         project_name: Optional[str] = None,
         variant: str = "production",
     ) -> list[SimpleActionManifest]:
-        return [get_open_in_rv_simple_action()]
+        return [
+            get_open_in_rv_simple_action(),
+        ]
 
     async def execute_action(
         self,

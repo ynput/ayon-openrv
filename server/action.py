@@ -11,6 +11,7 @@ if TYPE_CHECKING:
 
 
 ACTION_IDENTIFIER = "openrv.open_in_rv"
+EXECUTE_ACTION_IDENTIFIER = "openrv.open_in_existing_rv"
 
 # Media file extensions supported by the action (without leading dot, lowercase).
 # These mirror IMAGE_EXTENSIONS and VIDEO_EXTENSIONS from ayon_core so that the
@@ -214,7 +215,8 @@ async def execute_open_in_rv_action(
                     fields=form,
                     form_data=form_data,
                 )
-            representation_id = media_repres[0]["id"]
+            if media_repres:
+                representation_id = media_repres[0]["id"]
 
     # Store the representation_id
     form.hidden("representation_id", value=representation_id)
@@ -269,18 +271,48 @@ async def execute_open_in_rv_action(
             success=False,
             message="Selected OpenRV variant is not available.",
         )
+    form.hidden("app_name", value=app_name)
+    use_existing_rv_instance = form_data.get("use_existing_rv_instance")
+    if use_existing_rv_instance is None:
+        boolean_options = [(False, "No"), (True, "Yes")]
+        form.select(
+            name="use_existing_rv_instance",
+            label="Use existing OpenRV Session",
+            options=[
+                FormSelectOption(
+                    value=value,
+                    label=label,
+                )
+                for value, label in boolean_options
+            ],
+            value=boolean_options[0][0],
+        )
+        return await executor.get_form_response(
+            success=True,
+            title="Select OpenRV instance",
+            fields=form,
+            form_data=form_data,
+        )
+    if not isinstance(use_existing_rv_instance, bool):
+        return await executor.get_simple_response(
+            success=False,
+            message="Selected OpenRV instance option must be Yes or No.",
+        )
 
+    args = [
+        "addon",
+        "openrv",
+        "open-representation",
+        "--project",
+        project_name,
+        "--app",
+        app_name,
+        "--representation",
+        representation_id,
+    ]
+    if use_existing_rv_instance:
+        args.append("--use-existing-rv-instance")
     return await executor.get_launcher_response(
-        args=[
-            "addon",
-            "openrv",
-            "open-representation",
-            "--project",
-            project_name,
-            "--app",
-            app_name,
-            "--representation",
-            representation_id,
-        ],
+        args=args,
         message="Launching OpenRV...",
     )
