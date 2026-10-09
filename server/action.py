@@ -274,20 +274,18 @@ async def execute_open_in_rv_action(
     form.hidden("app_name", value=app_name)
     use_existing_rv_instance = form_data.get("use_existing_rv_instance")
     if use_existing_rv_instance is None:
+        boolean_options = [(False, "No"), (True, "Yes")]
         form.select(
             name="use_existing_rv_instance",
             label="Use existing OpenRV Session",
             options=[
                 FormSelectOption(
-                    value=True,
-                    label="Yes",
-                ),
-                FormSelectOption(
-                    value=False,
-                    label="No",
-                ),
+                    value=value,
+                    label=label,
+                )
+                for value, label in boolean_options
             ],
-            value=False,
+            value=boolean_options[0][0],
         )
         return await executor.get_form_response(
             success=True,
