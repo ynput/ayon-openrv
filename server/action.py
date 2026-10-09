@@ -181,11 +181,92 @@ async def execute_openrv_action(
     )
 
 
+async def _resolve_representation(
+    executor: "ActionExecutor",
+    *,
+    media_only: bool = False,
+) -> tuple[Optional[str], Optional["ExecuteResponseModel"]]:
+    """Resolve the representation to open.
+
+    Returns a ``(representation_id, response)`` tuple. When ``response`` is
+    not None it has to be returned to the caller instead (form or error
+    response).
+
+    Args:
+        executor: The action executor providing the context.
+        media_only: When True only image and video representations are
+            considered. This is required when loading into an existing
+            OpenRV instance, which cannot open ``.rv`` workfiles.
+    """
+    context = executor.context
+    project_name = context.project_name
+    version_id = context.entity_ids[0]
+    form_data = context.form_data or {}
+    form = SimpleForm()
+
+    representation_id = form_data.get("representation_id")
+    if not representation_id and not media_only:
+        # Prefer an RV workfile representation; fall back to media below.
+        representation_id = await _get_rv_workfile_representation_id(
+            project_name, version_id
+        )
+
+    if not representation_id or media_only:
+        media_repres = await _get_media_representations(
+            project_name, version_id
+        )
+        if representation_id:
+            # A representation was already picked in the form. It is only
+            # valid when it is still a media representation of this version.
+            media_ids = {repre["id"] for repre in media_repres}
+            if representation_id not in media_ids:
+                return None, await executor.get_simple_response(
+                    success=False,
+                    message=(
+                        "Selected representation is not available as media"
+                        " for this version."
+                    ),
+                )
+        elif len(media_repres) > 1:
+            # If there are multiple media representations, ask the user to
+            # select one.
+            form.select(
+                name="representation_id",
+                label="Representation",
+                options=[
+                    FormSelectOption(
+                        value=repre["id"],
+                        label=repre["name"],
+                    )
+                    for repre in media_repres
+                ],
+                value=media_repres[0]["id"],
+            )
+            return None, await executor.get_form_response(
+                success=True,
+                title="Select representation to open in RV",
+                fields=form,
+                form_data=form_data,
+            )
+        elif media_repres:
+            representation_id = media_repres[0]["id"]
+
+    if not representation_id:
+        description = "media" if media_only else "RV workfile or media"
+        return None, await executor.get_simple_response(
+            success=False,
+            message=(
+                f"Selected version has no {description} representation"
+                " that can be opened in RV."
+            ),
+        )
+    return representation_id, None
+
+
 async def execute_open_in_rv_action(
     executor: "ActionExecutor",
     use_existing_rv: bool = False,
 ) -> "ExecuteResponseModel":
-
     context = executor.context
     if context.entity_type != "version":
         return await executor.get_simple_response(
@@ -203,56 +284,18 @@ async def execute_open_in_rv_action(
         )
 
     project_name = context.project_name
-    version_id = entity_ids[0]
     form_data = context.form_data or {}
+
+    representation_id, response = await _resolve_representation(
+        executor, media_only=use_existing_rv
+    )
+    if response is not None:
+        return response
+
     form = SimpleForm()
-
-    representation_id = form_data.get("representation_id")
-    if not representation_id:
-        # Prefer an RV workfile representation; fall back to any media
-        # representation.
-        representation_id = await _get_rv_workfile_representation_id(
-            project_name, version_id
-        )
-        if representation_id is None:
-            media_repres = await _get_media_representations(
-                project_name,
-                version_id
-            )
-            # If there are multiple media representations, ask the user to
-            # select one.
-            if len(media_repres) > 1:
-                form.select(
-                    name="representation_id",
-                    label="Representation",
-                    options=[
-                        FormSelectOption(
-                            value=repre["id"],
-                            label=repre["name"],
-                        )
-                        for repre in media_repres
-                    ],
-                    value=media_repres[0]["id"],
-                )
-                return await executor.get_form_response(
-                    success=True,
-                    title="Select representation to open in RV",
-                    fields=form,
-                    form_data=form_data,
-                )
-            representation_id = media_repres[0]["id"]
-
-    # Store the representation_id
+    # Store the representation_id so a following OpenRV variant form keeps
+    # the selected representation
     form.hidden("representation_id", value=representation_id)
-
-    if representation_id is None:
-        return await executor.get_simple_response(
-            success=False,
-            message=(
-                "Selected version has no RV workfile or media representation"
-                " that can be opened in RV."
-            ),
-        )
 
     if use_existing_rv:
         return await executor.get_launcher_response(

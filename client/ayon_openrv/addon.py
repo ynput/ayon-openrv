@@ -132,6 +132,19 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
                 help="Published media representation id",
             )
         )
+        (
+            main_group.command(
+                self._cli_send_to_existing_rv,
+                name="send-to-existing-rv",
+                help="Alias of open-representation-in-existing-rv",
+            )
+            .option("--project", required=True, help="Project name")
+            .option(
+                "--representation",
+                required=True,
+                help="Published media representation id",
+            )
+        )
         addon_click_group.add_command(main_group.to_click_obj())
 
     def _cli_main(self):
@@ -244,6 +257,14 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
                 " can be opened; RV workfiles require a new OpenRV instance."
             )
         send_representation_to_existing_rv(project, repre_entity)
+
+    def _cli_send_to_existing_rv(
+        self,
+        project: str,
+        representation: str,
+    ):
+        """Legacy alias of ``open-representation-in-existing-rv``."""
+        self._cli_open_representation_in_existing_rv(project, representation)
 
     def _get_launch_context_for_representation(
         self,
