@@ -16,27 +16,29 @@ Another workflow would be publishing of `annotations`, but that is still WIP rig
 Integrations allows to load image, image sequence or `.mov` files to the `.rv` workfile.
 
 ### Web actions
-Select a single version to use either desktop action:
+Select a single version and choose **Open in RV**. The action prefers a
+published `.rv` workfile and otherwise asks for a representation when multiple
+media representations are available. After selecting the OpenRV application
+variant, choose whether to use an existing instance:
 
-- **Open in RV** launches a new OpenRV instance, preferring a published `.rv`
-  workfile and otherwise offering the available media representations.
-- **Open in Existing RV** sends an image or video representation to a running,
-  network-connected OpenRV instance. It never launches an application or offers
-  an application variant. RV workfiles are not supported by this action.
+- **No** launches a new OpenRV instance.
+- **Yes** sends the selected image or video representation to an already
+  running, network-connected OpenRV instance. It does not launch an application.
+  RV workfiles cannot be loaded this way; choose **No** for those.
 
-Both actions ask for a representation when multiple media representations are
-available. New instances launched by these actions enable RV networking with
+New instances launched by this action enable RV networking with
 `-network`. An existing instance must have networking enabled and use the
 connection settings configured in the OpenRV addon.
 
 The existing-instance CLI command is:
 
 ```shell
-ayon addon openrv open-representation-in-existing-rv --project PROJECT --representation ID
+ayon addon openrv open-representation --project PROJECT --representation ID --use-existing-rv-instance
 ```
 
 It fails if the representation is not media or no existing RV connection is
-available. `send-to-existing-rv` is retained as an alias.
+available. Omit `--use-existing-rv-instance` to launch a new instance; it is a
+flag and must not be followed by `True` or `False`.
 
 After updating the addon, deploy the matching server and client versions and
 restart RV. Server routing changes do not update an already installed client,

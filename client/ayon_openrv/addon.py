@@ -118,31 +118,10 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
                 default=None,
                 help="OpenRV app variant full name (e.g. openrv/2025)",
             )
-        )
-        (
-            main_group.command(
-                self._cli_open_representation_in_existing_rv,
-                name="open-representation-in-existing-rv",
-                help="Open a media representation in an existing OpenRV",
-            )
-            .option("--project", required=True, help="Project name")
             .option(
-                "--representation",
-                required=True,
-                help="Published media representation id",
-            )
-        )
-        (
-            main_group.command(
-                self._cli_send_to_existing_rv,
-                name="send-to-existing-rv",
-                help="Alias of open-representation-in-existing-rv",
-            )
-            .option("--project", required=True, help="Project name")
-            .option(
-                "--representation",
-                required=True,
-                help="Published media representation id",
+                "--use-existing-rv-instance",
+                is_flag=True,
+                help="Use an existing OpenRV instance to open the representation",
             )
         )
         addon_click_group.add_command(main_group.to_click_obj())
@@ -191,8 +170,15 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
         project: str,
         app: str,
         representation: str,
+        use_existing_rv_instance: bool = False,
     ):
         project_name = project
+        if use_existing_rv_instance:
+            return self._cli_open_representation_in_existing_rv(
+                project_name,
+                representation,
+            )
+
         repre_entity = ayon_api.get_representation_by_id(
             project_name,
             representation,
@@ -207,7 +193,6 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
                 project_name, repre_entity
             )
         )
-
         if repre_entity["name"] == "rv":
             repre_path = get_representation_path(project_name, repre_entity)
             self._launch_openrv(
@@ -257,14 +242,6 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
                 " can be opened; RV workfiles require a new OpenRV instance."
             )
         send_representation_to_existing_rv(project, repre_entity)
-
-    def _cli_send_to_existing_rv(
-        self,
-        project: str,
-        representation: str,
-    ):
-        """Legacy alias of ``open-representation-in-existing-rv``."""
-        self._cli_open_representation_in_existing_rv(project, representation)
 
     def _get_launch_context_for_representation(
         self,
