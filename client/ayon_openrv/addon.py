@@ -327,13 +327,20 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
         if unset_session_filename:
             env["AYON_RV_UNSET_SESSION"] = "1"
 
+        network_settings = ayon_api.get_addon_settings(
+            self.name, self.version
+        )["network"]
         launch_kwargs = dict(
             project_name=project_name,
             folder_path=folder_path,
             task_name=task_name,
             workfile_path=workfile_path,
             env=env,
-            app_args=["-network"],
+            app_args=[
+                "-network",
+                "-networkPort",
+                str(network_settings.get("conn_port", 45124)),
+            ],
         )
         # Used by prelaunch hook to load on launch
         if representation_id is not None:
