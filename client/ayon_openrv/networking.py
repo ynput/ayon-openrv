@@ -32,10 +32,28 @@ if TYPE_CHECKING:
 log = Logger.get_logger(__name__)
 
 
+def is_network_port_available(port: int) -> bool:
+    """Return True when nothing else is listening on the local port."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        try:
+            sock.bind(("127.0.0.1", port))
+        except OSError:
+            return False
+    return True
+
+
+def find_available_network_port() -> int:
+    """Return a currently unused local TCP port."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(("127.0.0.1", 0))
+        return int(sock.getsockname()[1])
+
+
 def send_representation_to_existing_rv(
     project_name: str,
     representation: dict,
     wait_for_connection: bool = False,
+    port: int | None = None,
 ) -> None:
     """Send representations to an RV instance over its network connection.
 
@@ -45,8 +63,12 @@ def send_representation_to_existing_rv(
         wait_for_connection: When True the connection is retried until the
             addon settings timeout is reached instead of failing right away.
             Use this right after launching a new RV instance.
+        port: Port to connect to. Defaults to the addon settings port. Pass
+            the port the new RV instance was started with so the
+            representation reaches that process instead of another session
+            listening on the shared port.
     """
-    rv_connector = RVConnector()
+    rv_connector = RVConnector(port=port)
     if not rv_connector.is_connected and not wait_for_connection:
         raise LoadError(
             "No existing OpenRV connection found."

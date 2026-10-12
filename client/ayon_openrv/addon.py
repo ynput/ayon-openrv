@@ -209,19 +209,32 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
             # file is consumed while RV is still creating its mode, which
             # loaded nothing and left an empty session.
             from ayon_openrv.networking import (
+                find_available_network_port,
+                is_network_port_available,
                 send_representation_to_existing_rv,
             )
+
+            # The port has to be picked before launching: connecting to the
+            # shared configured port would reach an already running session
+            # and leave the new process empty. When that port is free the new
+            # instance keeps using it, so it stays reachable for the
+            # existing-session action.
+            network_port = self._get_network_port()
+            if not is_network_port_available(network_port):
+                network_port = find_available_network_port()
 
             self._launch_openrv(
                 project_name,
                 folder_path,
                 task_name,
                 app_name=app,
+                network_port=network_port,
             )
             send_representation_to_existing_rv(
                 project_name,
                 repre_entity,
                 wait_for_connection=True,
+                port=network_port,
             )
 
     def _cli_open_representation_in_existing_rv(
@@ -254,6 +267,14 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
                 " can be opened; RV workfiles require a new OpenRV instance."
             )
         send_representation_to_existing_rv(project, repre_entity)
+
+    def _get_network_port(self) -> int:
+        """Return the configured OpenRV network port."""
+        try:
+            settings = ayon_api.get_addon_settings(self.name, self.version)
+            return int(settings["network"]["conn_port"])
+        except Exception:
+            return 45124
 
     def _get_launch_context_for_representation(
         self,
@@ -317,6 +338,7 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
         workfile_path: str | None = None,
         unset_session_filename: bool = False,
         representation_id: str | None = None,
+        network_port: int | None = None,
     ):
         from ayon_applications import ApplicationManager
 
@@ -338,13 +360,17 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
         env = os.environ.copy()
         if unset_session_filename:
             env["AYON_RV_UNSET_SESSION"] = "1"
+        app_args = ["-network"]
+        if network_port is not None:
+            app_args.extend(["-networkPort", str(network_port)])
+
         launch_kwargs = dict(
             project_name=project_name,
             folder_path=folder_path,
             task_name=task_name,
             workfile_path=workfile_path,
             env=env,
-            app_args=["-network"],
+            app_args=app_args,
         )
         # Used by prelaunch hook to load on launch
         if representation_id is not None:
