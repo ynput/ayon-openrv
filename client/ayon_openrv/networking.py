@@ -76,9 +76,9 @@ def send_representation_to_existing_rv(
         )
 
     payload = json.dumps([{
-        "objectName": representation["name"],
-        "representation": representation["id"],
-        "project": project_name,
+        "objectName": str(representation["name"]),
+        "representation": str(representation["id"]),
+        "project_name": str(project_name),
     }])
     try:
         # This also retries the connection
@@ -451,7 +451,7 @@ class RVConnector:
             self._send_initial_greeting()
             self._sock.sendall(b"PINGPONGCONTROL 1 0")
             self.is_connected = True
-        except OSError as err:
+        except Exception as err:
             log.debug(f"Connection failed: {err}")
             self.is_connected = False
             # Clean up failed socket
