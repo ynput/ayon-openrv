@@ -32,15 +32,22 @@ if TYPE_CHECKING:
 log = Logger.get_logger(__name__)
 
 
-def send_representation_to_existing_rv(project_name: str, representation: dict) -> None:
-    """Send representations to an existing RV instance.
+def send_representation_to_existing_rv(
+    project_name: str,
+    representation: dict,
+    wait_for_connection: bool = False,
+) -> None:
+    """Send representations to an RV instance over its network connection.
 
     Args:
         project_name: The name of the project.
         representation: The representation dictionary to send.
+        wait_for_connection: When True the connection is retried until the
+            addon settings timeout is reached instead of failing right away.
+            Use this right after launching a new RV instance.
     """
     rv_connector = RVConnector()
-    if not rv_connector.is_connected:
+    if not rv_connector.is_connected and not wait_for_connection:
         raise LoadError(
             "No existing OpenRV connection found."
             " Make sure OpenRV is running and network connected."
@@ -48,16 +55,22 @@ def send_representation_to_existing_rv(project_name: str, representation: dict) 
 
     payload = json.dumps([{
         "objectName": representation["name"],
-        "representation":representation["id"],
+        "representation": representation["id"],
         "project": project_name,
     }])
-    # This also retries the connection
-    with rv_connector:
-        rv_connector.send_event(
-            "ayon_load_container",
-            payload,
-            shall_return=False
-        )
+    try:
+        # This also retries the connection
+        with rv_connector:
+            rv_connector.send_event(
+                "ayon_load_container",
+                payload,
+                shall_return=False
+            )
+    except ConnectionError as exc:
+        raise LoadError(
+            "Could not connect to OpenRV. Make sure OpenRV is running"
+            " and network connected."
+        ) from exc
 
 class RVConnector:
     """Manages socket connection to RV for remote control.
@@ -463,18 +476,36 @@ class LoadContainerHandler:
         appropriate loader plugins.
         """
         event_data: dict = json.loads(self.event.contents())
-        project_name = get_current_project_name()
-
-        if project_name is None:
-            log.error("No current project name available")
-            return
 
         representation_ids = [
-            event["representation"]
-            for event in event_data
-            if event.get("representation")
+            entry["representation"]
+            for entry in event_data
+            if entry.get("representation")
         ]
         log.debug(f"representation_ids: {representation_ids}")
+
+        # The sender knows which project the representations belong to, while
+        # the running RV session may have a different project in context.
+        # Prefer the project from the event and fall back to the current one.
+        project_names = {
+            entry["project"]
+            for entry in event_data
+            if entry.get("project")
+        }
+        if len(project_names) > 1:
+            log.error(
+                "Received representations of multiple projects in a single"
+                f" event: {sorted(project_names)}"
+            )
+            return
+
+        project_name = next(iter(project_names), None)
+        if project_name is None:
+            project_name = get_current_project_name()
+
+        if project_name is None:
+            log.error("No project name available")
+            return
 
         repre_entities = get_representations(
             project_name=project_name, representation_ids=representation_ids

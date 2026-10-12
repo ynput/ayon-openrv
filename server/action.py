@@ -11,7 +11,6 @@ if TYPE_CHECKING:
 
 
 ACTION_IDENTIFIER = "openrv.open_in_rv"
-EXECUTE_ACTION_IDENTIFIER = "openrv.open_in_existing_rv"
 
 # Media file extensions supported by the action (without leading dot, lowercase).
 # These mirror IMAGE_EXTENSIONS and VIDEO_EXTENSIONS from ayon_core so that the
@@ -298,6 +297,51 @@ async def execute_open_in_rv_action(
             success=False,
             message="Selected OpenRV instance option must be Yes or No.",
         )
+
+    if use_existing_rv_instance:
+        # An existing RV session cannot load a published .rv workfile, so
+        # make sure a media representation is used. The earlier step may have
+        # picked the workfile because the version has one.
+        media_repres = await _get_media_representations(
+            project_name, version_id
+        )
+        media_ids = {repre["id"] for repre in media_repres}
+        if representation_id not in media_ids:
+            if len(media_repres) > 1:
+                media_form = SimpleForm()
+                media_form.hidden("app_name", value=app_name)
+                media_form.hidden("use_existing_rv_instance", value=True)
+                media_form.select(
+                    name="representation_id",
+                    label="Representation",
+                    options=[
+                        FormSelectOption(
+                            value=repre["id"],
+                            label=repre["name"],
+                        )
+                        for repre in media_repres
+                    ],
+                    value=media_repres[0]["id"],
+                )
+                return await executor.get_form_response(
+                    success=True,
+                    title=(
+                        "Select media representation for the existing"
+                        " OpenRV session"
+                    ),
+                    fields=media_form,
+                    form_data=form_data,
+                )
+            if not media_repres:
+                return await executor.get_simple_response(
+                    success=False,
+                    message=(
+                        "Selected version has no media representation that"
+                        " can be opened in an existing OpenRV session. Select"
+                        " 'No' to open a published RV workfile instead."
+                    ),
+                )
+            representation_id = media_repres[0]["id"]
 
     args = [
         "addon",

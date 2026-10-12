@@ -204,12 +204,24 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
                 unset_session_filename=True,
             )
         else:
+            # Launch a new OpenRV instance and send the representation over
+            # its network connection. The 'AYON_LOADER_REPRESENTATIONS' env
+            # file is consumed while RV is still creating its mode, which
+            # loaded nothing and left an empty session.
+            from ayon_openrv.networking import (
+                send_representation_to_existing_rv,
+            )
+
             self._launch_openrv(
                 project_name,
                 folder_path,
                 task_name,
                 app_name=app,
-                representation_id=representation,
+            )
+            send_representation_to_existing_rv(
+                project_name,
+                repre_entity,
+                wait_for_connection=True,
             )
 
     def _cli_open_representation_in_existing_rv(
@@ -326,21 +338,13 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
         env = os.environ.copy()
         if unset_session_filename:
             env["AYON_RV_UNSET_SESSION"] = "1"
-
-        network_settings = ayon_api.get_addon_settings(
-            self.name, self.version
-        )["network"]
         launch_kwargs = dict(
             project_name=project_name,
             folder_path=folder_path,
             task_name=task_name,
             workfile_path=workfile_path,
             env=env,
-            app_args=[
-                "-network",
-                "-networkPort",
-                str(network_settings.get("conn_port", 45124)),
-            ],
+            app_args=["-network"],
         )
         # Used by prelaunch hook to load on launch
         if representation_id is not None:
