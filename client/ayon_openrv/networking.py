@@ -510,9 +510,9 @@ class LoadContainerHandler:
         # the running RV session may have a different project in context.
         # Prefer the project from the event and fall back to the current one.
         project_names = {
-            entry["project"]
+            entry["project_name"]
             for entry in event_data
-            if entry.get("project")
+            if entry.get("project_name")
         }
         if len(project_names) > 1:
             log.error(
