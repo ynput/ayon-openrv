@@ -324,12 +324,18 @@ def on_remote_contact_error_show(event):
     The AYON addon connects to a running OpenRV to push a representation and
     disconnects right after. RV keeps that connection as a network contact
     and reports the disconnect as a network error, which is not actionable
-    for the artist. Return 'no' to hide it for the AYON connection only.
+    for the artist. Set the event response to hide it for the AYON connection
+    only.
     """
     contact = event.contents() or ""
-    if contact.split("@")[0] == get_ayon_connection_name():
-        return "no"
-    return ""
+    name = contact.split("@")[0]
+    base_name = get_ayon_connection_name()
+    # Connections identify themselves as '<name>-<pid>-<n>' so that RV never
+    # confuses them with a previous connection.
+    if name == base_name or name.startswith(f"{base_name}-"):
+        event.setReturnContent("no")
+        return
+    event.setReturnContent("yes")
 
 
 def on_ayon_load_container(event):

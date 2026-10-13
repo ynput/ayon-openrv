@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 import socket
+from itertools import count
 from time import sleep, time
 from typing import TYPE_CHECKING
 
@@ -30,6 +31,20 @@ if TYPE_CHECKING:
     from typing import Any
 
 log = Logger.get_logger(__name__)
+
+_unique_connection_ids = count(1)
+
+
+def get_unique_connection_name(base_name: str) -> str:
+    """Return a connection name unique to this process and connection.
+
+    RV keys the state of a network contact by ``"<name>@<host>"`` and rejects
+    a new connection while a mapping for that contact is still present
+    (RvNetworkDialog.cpp:630-637, "'<name>' is already connected"). A rejected
+    connection is reported to the user as an OpenRV network error, so every
+    connection identifies itself with its own name.
+    """
+    return f"{base_name}-{os.getpid()}-{next(_unique_connection_ids)}"
 
 
 def is_network_port_available(port: int) -> bool:
@@ -103,7 +118,8 @@ class RVConnector:
 
     Attributes:
         host: The hostname to connect to.
-        name: The connection name for identification.
+        connection_name: The configured connection name.
+        name: The unique name this connection identifies itself with.
         port: The port to connect to.
         is_connected: Whether currently connected to RV.
     """
@@ -126,7 +142,8 @@ class RVConnector:
         settings = self._get_settings()
 
         self.host = host or "localhost"
-        self.name = name or settings["network"]["conn_name"]
+        self.connection_name = name or settings["network"]["conn_name"]
+        self.name = get_unique_connection_name(self.connection_name)
         self.port = port or settings["network"]["conn_port"]
 
         self.is_connected = False
@@ -280,22 +297,35 @@ class RVConnector:
         return ""
 
     def close(self) -> None:
-        """Close the connection and clean up resources."""
+        """Close the connection and clean up resources.
+
+        The disconnect has to be orderly: RV reports a socket error on a
+        previous controller connection as "Network Error ... Unable to write",
+        so pending data is drained (and RV's keep-alive pings answered)
+        before and after sending DISCONNECT, and the socket is half closed
+        instead of reset.
+        """
         if self.is_connected and self._sock is not None:
             try:
+                self._drain_pending(0.1)
                 self.send_message("DISCONNECT")
                 timeout = int(
                     os.environ.get("AYON_RV_SOCKET_CLOSE_TIMEOUT", 100)
                 )
                 sleep(timeout / 1000)
+                self._drain_pending(0.1)
             except OSError:
                 pass  # Best effort disconnect message
 
         if self._sock is not None:
             try:
-                self._sock.shutdown(socket.SHUT_RDWR)
+                # Half close: FIN on the write side, without discarding
+                # whatever RV has already sent us.
+                self._sock.shutdown(socket.SHUT_WR)
             except OSError:
                 pass  # Already closed or not connected
+
+            self._drain()
 
             try:
                 self._sock.close()
@@ -305,6 +335,48 @@ class RVConnector:
             self._sock = None
 
         self.is_connected = False
+
+    def _drain_pending(self, timeout: float) -> None:
+        """Read and answer whatever RV sent within the timeout."""
+        if self._sock is None:
+            return
+        deadline = time() + timeout
+        while True:
+            remaining = deadline - time()
+            if remaining <= 0:
+                return
+            try:
+                self._sock.settimeout(min(remaining, 0.05))
+                data = self._sock.recv(65536)
+            except socket.timeout:
+                continue
+            except OSError:
+                return
+            if not data:
+                return
+            if b"PING " in data:
+                try:
+                    self._sock.sendall(b"PONG 1 p")
+                except OSError:
+                    return
+
+    def _drain(self) -> None:
+        """Read until RV closes its side or stops sending."""
+        if self._sock is None:
+            return
+        try:
+            self._sock.settimeout(0.25)
+        except OSError:
+            return
+        while True:
+            try:
+                data = self._sock.recv(65536)
+            except socket.timeout:
+                return
+            except OSError:
+                return
+            if not data:
+                return
 
     def receive_message(self) -> tuple[str, str | None]:
         """Receive a message from the socket.
