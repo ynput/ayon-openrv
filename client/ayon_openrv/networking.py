@@ -438,7 +438,7 @@ class RVConnector:
         if self._sock is not None:
             try:
                 self._sock.close()
-            except OSError:
+            except Exception:
                 pass
             self._sock = None
 
