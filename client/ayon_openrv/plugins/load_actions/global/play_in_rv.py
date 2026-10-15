@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import json
 import collections
-from typing import Any, Optional
+from typing import Any
 
 from ayon_applications import ApplicationManager
 
@@ -65,7 +65,7 @@ class _BasePlayInRVAction(LoaderActionPlugin):
         selection: LoaderActionSelection,
         data: dict[str, Any],
         form_values: dict[str, Any],
-    ) -> Optional[LoaderActionResult]:
+    ) -> LoaderActionResult | None:
         repre_ids = data.get("representation_ids")
         if not repre_ids:
             return LoaderActionResult(
@@ -109,11 +109,11 @@ class _BasePlayInRVAction(LoaderActionPlugin):
         self,
         selection: LoaderActionSelection,
         repre_entities: list[dict[str, Any]],
-    ) -> Optional[LoaderActionResult]:
+    ) -> LoaderActionResult | None:
         """Handle missing connection to OpenRV.
 
         Returns:
-            Optional[LoaderActionResult]: Result to return from the action
+            LoaderActionResult | None: Result to return from the action
                 or 'None' to continue with sending the representations.
 
         """
@@ -161,7 +161,7 @@ class PlayInRVAction(_BasePlayInRVAction):
         self,
         selection: LoaderActionSelection,
         repre_entities: list[dict[str, Any]],
-    ) -> Optional[LoaderActionResult]:
+    ) -> LoaderActionResult | None:
         # get launch context variables
         project_name = selection.project_name
         folder_path, task_name = self._get_launch_context(
@@ -203,7 +203,7 @@ class PlayInRVAction(_BasePlayInRVAction):
         self,
         selection: LoaderActionSelection,
         repre_entity: dict[str, Any],
-    ) -> tuple[Optional[str], Optional[str]]:
+    ) -> tuple[str | None, str | None]:
         version_id = repre_entity["versionId"]
         products = selection.entities.get_versions_products({version_id})
         folders = selection.entities.get_products_folders(
@@ -251,7 +251,7 @@ class PlayInExistingRVAction(_BasePlayInRVAction):
         self,
         selection: LoaderActionSelection,
         repre_entities: list[dict[str, Any]],
-    ) -> Optional[LoaderActionResult]:
+    ) -> LoaderActionResult | None:
         return LoaderActionResult(
             "No existing OpenRV connection found."
             " Make sure OpenRV is running and network connected.",
