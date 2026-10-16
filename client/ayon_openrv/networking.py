@@ -57,6 +57,19 @@ def is_network_port_available(port: int) -> bool:
     return True
 
 
+def is_network_port_listening(port: int, timeout: float = 0.5) -> bool:
+    """Return True when something is listening on the local port.
+
+    'is_network_port_available' binds the port to find out whether it is
+    free, which does not see a service listening on another address of the
+    machine (e.g. OpenRV listening on 0.0.0.0 or on the LAN address).
+    Connecting to the port sees those too.
+    """
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.settimeout(timeout)
+        return sock.connect_ex(("127.0.0.1", port)) == 0
+
+
 def find_available_network_port() -> int:
     """Return a currently unused local TCP port."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:

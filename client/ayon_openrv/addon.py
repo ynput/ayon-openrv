@@ -214,16 +214,19 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
             from ayon_openrv.networking import (
                 find_available_network_port,
                 is_network_port_available,
+                is_network_port_listening,
                 send_representation_to_existing_rv,
             )
 
-            # The port has to be picked before launching: connecting to the
-            # shared configured port would reach an already running session
-            # and leave the new process empty. When that port is free the new
-            # instance keeps using it, so it stays reachable for the
-            # existing-session action.
+            # The port has to be picked before launching: the new instance
+            # must not be sent to an already running session. A session is
+            # detected by connecting to the port, a bind test does not see a
+            # session listening on another address of the machine.
             network_port = self._get_network_port()
-            if not is_network_port_available(network_port):
+            if (
+                is_network_port_listening(network_port)
+                or not is_network_port_available(network_port)
+            ):
                 network_port = find_available_network_port()
 
             self.log.info(
@@ -265,7 +268,7 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
         app_name: str | None = None,
     ):
         from ayon_openrv.networking import (
-            is_network_port_available,
+            is_network_port_listening,
             send_representation_to_existing_rv,
         )
 
@@ -293,7 +296,7 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
             )
 
         network_port = self._get_network_port()
-        if is_network_port_available(network_port):
+        if not is_network_port_listening(network_port):
             # Nothing is listening on the configured port. Launching a new
             # OpenRV instance is what the user wants, asking them to pick
             # another option would only be confusing.

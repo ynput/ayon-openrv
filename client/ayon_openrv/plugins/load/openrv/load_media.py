@@ -69,14 +69,21 @@ class BaseMediaLoader(load.LoaderPlugin):
         )
 
     def _set_view_to_node(self, node: str) -> None:
-        """Bring the node into the view.
+        """Bring the source of the node into the view.
+
+        The view is set to the switch node of the source, because that node
+        resolves to the active media representation of the source. Setting
+        the view to the media representation node itself keeps showing that
+        version, so switching to another version would not change what the
+        player shows.
 
         Args:
-            node (str): Node that should be shown in the view.
+            node (str): Node of the source that should be shown in the view.
 
         """
         try:
-            rv.commands.setViewNode(node)
+            switch_node = rv.commands.sourceMediaRepSwitchNode(node)
+            rv.commands.setViewNode(switch_node or node)
             rv.commands.redraw()
         except Exception:
             self.log.warning(

@@ -306,6 +306,11 @@ async def execute_open_in_rv_action(
                 ),
             )
         representation_id = media_representation_id
+    elif media_representation_id is not None:
+        # Open the media of the selected version. Opening the RV workfile of
+        # the task would open the version the workfile belongs to, and that
+        # replaces the selected one.
+        representation_id = media_representation_id
     elif workfile_representation_id is not None:
         representation_id = workfile_representation_id
     else:
