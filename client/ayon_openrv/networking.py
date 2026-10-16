@@ -630,7 +630,28 @@ class LoadContainerHandler:
             log.warning("MovLoader plugin not found")
 
         for repre in repre_entities:
-            filepath = get_representation_path(repre)
+            # Resolve with the project from the event. The one argument
+            # 'get_representation_path' signature is deprecated and uses the
+            # current project, which fails for representations coming from
+            # another project than the running OpenRV session is in.
+            try:
+                filepath = get_representation_path(project_name, repre)
+            except Exception:
+                log.warning(
+                    "Failed to resolve the path of representation"
+                    f" '{repre['id']}' of project '{project_name}'.",
+                    exc_info=True,
+                )
+                continue
+
+            if not filepath:
+                log.error(
+                    "Representation"
+                    f" '{repre['id']}' of project '{project_name}' has"
+                    " no resolved path."
+                )
+                continue
+
             extension = os.path.splitext(filepath)[1].lstrip(".").lower()
 
             self._load_by_extension(
