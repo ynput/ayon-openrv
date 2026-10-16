@@ -195,6 +195,9 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
         )
         if repre_entity["name"] == "rv":
             repre_path = get_representation_path(project_name, repre_entity)
+            # A workfile is opened by a new instance as well. It has to get a
+            # port no other session uses for the same reason as media, so the
+            # instance is network connected and reachable on its own port.
             self._launch_openrv(
                 project_name,
                 folder_path,
@@ -202,6 +205,7 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
                 app_name=app,
                 workfile_path=repre_path,
                 unset_session_filename=True,
+                network_port=self._get_free_network_port(),
             )
         else:
             # A new OpenRV instance is launched and the representation is
@@ -209,46 +213,61 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
             # 'AYON_LOADER_REPRESENTATIONS' env file is consumed while RV is
             # still creating its mode, which loaded nothing and left an empty
             # session.
-            from ayon_core.pipeline.load import LoadError
-
-            from ayon_openrv.networking import (
-                find_available_network_port,
-                is_network_port_available,
-                is_network_port_listening,
-                send_representation_to_existing_rv,
+            self.open_representations_in_new_rv(
+                project_name, [repre_entity], app_name=app
             )
 
-            # The port has to be picked before launching: the new instance
-            # must not be sent to an already running session. A session is
-            # detected by connecting to the port, a bind test does not see a
-            # session listening on another address of the machine.
-            network_port = self._get_network_port()
-            if (
-                is_network_port_listening(network_port)
-                or not is_network_port_available(network_port)
-            ):
-                network_port = find_available_network_port()
+    def open_representations_in_new_rv(
+        self,
+        project_name: str,
+        representations: list[dict[str, str]],
+        app_name: str | None = None,
+    ) -> int:
+        """Open representations in a new OpenRV instance.
 
-            self.log.info(
-                "Launching OpenRV on network port %s.", network_port
-            )
-            self._launch_openrv(
-                project_name,
-                folder_path,
-                task_name,
-                app_name=app,
-                network_port=network_port,
-            )
+        The instance is launched on a network port no other session uses,
+        and every representation is sent to it.
+
+        Args:
+            project_name (str): Project the representations belong to.
+            representations (list[dict[str, str]]): Representation entities.
+            app_name (Optional[str]): OpenRV application variant to launch.
+
+        Returns:
+            int: Network port the instance was launched on.
+
+        """
+        from ayon_core.pipeline.load import LoadError
+
+        from ayon_openrv.networking import send_representation_to_existing_rv
+
+        if not representations:
+            raise RuntimeError("No representation passed to open in OpenRV.")
+
+        network_port = self._get_free_network_port()
+        folder_path, task_name = self._get_launch_context_for_representation(
+            project_name, representations[0]
+        )
+        self.log.info("Launching OpenRV on network port %s.", network_port)
+        self._launch_openrv(
+            project_name,
+            folder_path,
+            task_name,
+            app_name=app_name,
+            network_port=network_port,
+        )
+
+        for representation in representations:
             self.log.info(
                 "Sending representation '%s' to the OpenRV instance on port"
                 " %s.",
-                repre_entity["id"],
+                representation["id"],
                 network_port,
             )
             try:
                 send_representation_to_existing_rv(
                     project_name,
-                    repre_entity,
+                    representation,
                     wait_for_connection=True,
                     port=network_port,
                 )
@@ -260,6 +279,35 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
                     " '-network' / '-networkPort' settings, they must not"
                     " override the port AYON passes."
                 ) from error
+
+        return network_port
+
+    def _get_free_network_port(self) -> int:
+        """Network port a new OpenRV instance can use.
+
+        The configured port is used when no other session uses it, otherwise
+        a free port is picked: a new instance must not try to share the port
+        of a running session, it would not be able to start its network
+        connection and stay empty. A session is detected by connecting to the
+        port, a bind test does not see a session listening on another address
+        of the machine.
+
+        Returns:
+            int: Network port for a new OpenRV instance.
+
+        """
+        from ayon_openrv.networking import (
+            find_available_network_port,
+            is_network_port_available,
+            is_network_port_listening,
+        )
+
+        network_port = self._get_network_port()
+        if is_network_port_available(network_port) and (
+            not is_network_port_listening(network_port)
+        ):
+            return network_port
+        return find_available_network_port()
 
     def _cli_open_representation_in_existing_rv(
         self,
