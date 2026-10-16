@@ -61,9 +61,35 @@ class BaseMediaLoader(load.LoaderPlugin):
             loader=self.__class__.__name__,
         )
 
+        # Show the loaded source, otherwise the user has to switch to it
+        self._set_view_to_node(node)
+
         rv.commands.sendInternalEvent(
             "ayon-source-loaded", str(node), self.__class__.__name__
         )
+
+    def _set_view_to_node(self, node: str) -> None:
+        """Bring the source of the node into the view.
+
+        The view is set to the switch node of the source, because that node
+        resolves to the active media representation of the source. Setting
+        the view to the media representation node itself keeps showing that
+        version, so switching to another version would not change what the
+        player shows.
+
+        Args:
+            node (str): Node of the source that should be shown in the view.
+
+        """
+        try:
+            switch_node = rv.commands.sourceMediaRepSwitchNode(node)
+            rv.commands.setViewNode(switch_node or node)
+            rv.commands.redraw()
+        except Exception:
+            self.log.warning(
+                "Failed to switch the view to the loaded source",
+                exc_info=True,
+            )
 
     def _finalize_loaded_node(self, loaded_node, rep_name, filepath, context):
         """Finalize the loaded node in OpenRV.
@@ -180,6 +206,9 @@ class BaseMediaLoader(load.LoaderPlugin):
             True,
         )
         rv.commands.reload()
+
+        # Show the version that was switched to
+        self._set_view_to_node(node)
 
     def remove(self, container: dict) -> None:  # noqa: PLR6301
         """Remove loaded container."""

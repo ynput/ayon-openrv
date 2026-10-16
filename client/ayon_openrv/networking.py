@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 import socket
+from itertools import count
 from time import sleep, time
 from typing import TYPE_CHECKING
 
@@ -21,6 +22,7 @@ from ayon_core.pipeline import (
     get_representation_path,
     load_container,
 )
+from ayon_core.pipeline.load import LoadError
 
 from ayon_openrv.addon import OpenRVAddon
 from ayon_openrv.version import __version__
@@ -30,6 +32,95 @@ if TYPE_CHECKING:
 
 log = Logger.get_logger(__name__)
 
+_unique_connection_ids = count(1)
+
+
+def get_unique_connection_name(base_name: str) -> str:
+    """Return a connection name unique to this process and connection.
+
+    RV keys the state of a network contact by ``"<name>@<host>"`` and rejects
+    a new connection while a mapping for that contact is still present
+    (RvNetworkDialog.cpp:630-637, "'<name>' is already connected"). A rejected
+    connection is reported to the user as an OpenRV network error, so every
+    connection identifies itself with its own name.
+    """
+    return f"{base_name}-{os.getpid()}-{next(_unique_connection_ids)}"
+
+
+def is_network_port_available(port: int) -> bool:
+    """Return True when nothing else is listening on the local port."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        try:
+            sock.bind(("127.0.0.1", port))
+        except OSError:
+            return False
+    return True
+
+
+def is_network_port_listening(port: int, timeout: float = 0.5) -> bool:
+    """Return True when something is listening on the local port.
+
+    'is_network_port_available' binds the port to find out whether it is
+    free, which does not see a service listening on another address of the
+    machine (e.g. OpenRV listening on 0.0.0.0 or on the LAN address).
+    Connecting to the port sees those too.
+    """
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.settimeout(timeout)
+        return sock.connect_ex(("127.0.0.1", port)) == 0
+
+
+def find_available_network_port() -> int:
+    """Return a currently unused local TCP port."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(("127.0.0.1", 0))
+        return int(sock.getsockname()[1])
+
+
+def send_representation_to_existing_rv(
+    project_name: str,
+    representation: dict,
+    wait_for_connection: bool = False,
+    port: int | None = None,
+) -> None:
+    """Send representations to an RV instance over its network connection.
+
+    Args:
+        project_name: The name of the project.
+        representation: The representation dictionary to send.
+        wait_for_connection: When True the connection is retried until the
+            addon settings timeout is reached instead of failing right away.
+            Use this right after launching a new RV instance.
+        port: Port to connect to. Defaults to the addon settings port. Pass
+            the port the new RV instance was started with so the
+            representation reaches that process instead of another session
+            listening on the shared port.
+    """
+    rv_connector = RVConnector(port=port)
+    if not rv_connector.is_connected and not wait_for_connection:
+        raise LoadError(
+            "No existing OpenRV connection found."
+            " Make sure OpenRV is running and network connected."
+        )
+
+    payload = json.dumps([{
+        "objectName": str(representation["name"]),
+        "representation": str(representation["id"]),
+        "project_name": str(project_name),
+    }])
+    try:
+        # This also retries the connection
+        with rv_connector:
+            rv_connector.send_event(
+                "ayon_load_container",
+                payload,
+                shall_return=False
+            )
+    except ConnectionError as exc:
+        raise LoadError(
+            "Could not connect to OpenRV. Make sure OpenRV is running"
+            " and network connected."
+        ) from exc
 
 class RVConnector:
     """Manages socket connection to RV for remote control.
@@ -40,7 +131,8 @@ class RVConnector:
 
     Attributes:
         host: The hostname to connect to.
-        name: The connection name for identification.
+        connection_name: The configured connection name.
+        name: The unique name this connection identifies itself with.
         port: The port to connect to.
         is_connected: Whether currently connected to RV.
     """
@@ -63,7 +155,8 @@ class RVConnector:
         settings = self._get_settings()
 
         self.host = host or "localhost"
-        self.name = name or settings["network"]["conn_name"]
+        self.connection_name = name or settings["network"]["conn_name"]
+        self.name = get_unique_connection_name(self.connection_name)
         self.port = port or settings["network"]["conn_port"]
 
         self.is_connected = False
@@ -217,22 +310,35 @@ class RVConnector:
         return ""
 
     def close(self) -> None:
-        """Close the connection and clean up resources."""
+        """Close the connection and clean up resources.
+
+        The disconnect has to be orderly: RV reports a socket error on a
+        previous controller connection as "Network Error ... Unable to write",
+        so pending data is drained (and RV's keep-alive pings answered)
+        before and after sending DISCONNECT, and the socket is half closed
+        instead of reset.
+        """
         if self.is_connected and self._sock is not None:
             try:
+                self._drain_pending(0.1)
                 self.send_message("DISCONNECT")
                 timeout = int(
                     os.environ.get("AYON_RV_SOCKET_CLOSE_TIMEOUT", 100)
                 )
                 sleep(timeout / 1000)
+                self._drain_pending(0.1)
             except OSError:
                 pass  # Best effort disconnect message
 
         if self._sock is not None:
             try:
-                self._sock.shutdown(socket.SHUT_RDWR)
+                # Half close: FIN on the write side, without discarding
+                # whatever RV has already sent us.
+                self._sock.shutdown(socket.SHUT_WR)
             except OSError:
                 pass  # Already closed or not connected
+
+            self._drain()
 
             try:
                 self._sock.close()
@@ -242,6 +348,48 @@ class RVConnector:
             self._sock = None
 
         self.is_connected = False
+
+    def _drain_pending(self, timeout: float) -> None:
+        """Read and answer whatever RV sent within the timeout."""
+        if self._sock is None:
+            return
+        deadline = time() + timeout
+        while True:
+            remaining = deadline - time()
+            if remaining <= 0:
+                return
+            try:
+                self._sock.settimeout(min(remaining, 0.05))
+                data = self._sock.recv(65536)
+            except socket.timeout:
+                continue
+            except OSError:
+                return
+            if not data:
+                return
+            if b"PING " in data:
+                try:
+                    self._sock.sendall(b"PONG 1 p")
+                except OSError:
+                    return
+
+    def _drain(self) -> None:
+        """Read until RV closes its side or stops sending."""
+        if self._sock is None:
+            return
+        try:
+            self._sock.settimeout(0.25)
+        except OSError:
+            return
+        while True:
+            try:
+                data = self._sock.recv(65536)
+            except socket.timeout:
+                return
+            except OSError:
+                return
+            if not data:
+                return
 
     def receive_message(self) -> tuple[str, str | None]:
         """Receive a message from the socket.
@@ -375,7 +523,7 @@ class RVConnector:
         if self._sock is not None:
             try:
                 self._sock.close()
-            except OSError:
+            except Exception:
                 pass
             self._sock = None
 
@@ -388,7 +536,7 @@ class RVConnector:
             self._send_initial_greeting()
             self._sock.sendall(b"PINGPONGCONTROL 1 0")
             self.is_connected = True
-        except OSError as err:
+        except Exception as err:
             log.debug(f"Connection failed: {err}")
             self.is_connected = False
             # Clean up failed socket
@@ -435,18 +583,36 @@ class LoadContainerHandler:
         appropriate loader plugins.
         """
         event_data: dict = json.loads(self.event.contents())
-        project_name = get_current_project_name()
-
-        if project_name is None:
-            log.error("No current project name available")
-            return
 
         representation_ids = [
-            event["representation"]
-            for event in event_data
-            if event.get("representation")
+            entry["representation"]
+            for entry in event_data
+            if entry.get("representation")
         ]
         log.debug(f"representation_ids: {representation_ids}")
+
+        # The sender knows which project the representations belong to, while
+        # the running RV session may have a different project in context.
+        # Prefer the project from the event and fall back to the current one.
+        project_names = {
+            entry["project_name"]
+            for entry in event_data
+            if entry.get("project_name")
+        }
+        if len(project_names) > 1:
+            log.error(
+                "Received representations of multiple projects in a single"
+                f" event: {sorted(project_names)}"
+            )
+            return
+
+        project_name = next(iter(project_names), None)
+        if project_name is None:
+            project_name = get_current_project_name()
+
+        if project_name is None:
+            log.error("No project name available")
+            return
 
         repre_entities = get_representations(
             project_name=project_name, representation_ids=representation_ids
@@ -477,7 +643,28 @@ class LoadContainerHandler:
             log.warning("MovLoader plugin not found")
 
         for repre in repre_entities:
-            filepath = get_representation_path(repre)
+            # Resolve with the project from the event. The one argument
+            # 'get_representation_path' signature is deprecated and uses the
+            # current project, which fails for representations coming from
+            # another project than the running OpenRV session is in.
+            try:
+                filepath = get_representation_path(project_name, repre)
+            except Exception:
+                log.warning(
+                    "Failed to resolve the path of representation"
+                    f" '{repre['id']}' of project '{project_name}'.",
+                    exc_info=True,
+                )
+                continue
+
+            if not filepath:
+                log.error(
+                    "Representation"
+                    f" '{repre['id']}' of project '{project_name}' has"
+                    " no resolved path."
+                )
+                continue
+
             extension = os.path.splitext(filepath)[1].lstrip(".").lower()
 
             self._load_by_extension(
@@ -526,3 +713,4 @@ class LoadContainerHandler:
                     return
 
         log.warning(f"No loader found for extension: {extension}")
+
