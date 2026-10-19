@@ -5,8 +5,6 @@ import json
 import collections
 from typing import Any
 
-from ayon_applications import ApplicationManager
-
 from ayon_core.lib.transcoding import (
     IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
 )
@@ -27,7 +25,7 @@ SUPPORTED_EXTENSIONS = {
 
 
 class _BasePlayInRVAction(LoaderActionPlugin):
-    """Base for actions sending representations to network connected OpenRV.
+    """Base for actions opening representations in OpenRV.
 
     Could be run from Loader in DCC or outside.
     """
@@ -60,65 +58,6 @@ class _BasePlayInRVAction(LoaderActionPlugin):
             for repre_name, repre_ids in repre_ids_by_name.items()
         ]
 
-    def execute_action(
-        self,
-        selection: LoaderActionSelection,
-        data: dict[str, Any],
-        form_values: dict[str, Any],
-    ) -> LoaderActionResult | None:
-        repre_ids = data.get("representation_ids")
-        if not repre_ids:
-            return LoaderActionResult(
-                "Missing representation ids.",
-                success=False,
-            )
-
-        repre_entities = selection.entities.get_representations(
-            set(repre_ids)
-        )
-        if not repre_entities:
-            return LoaderActionResult(
-                "Failed to find representations in AYON.",
-                success=False,
-            )
-
-        rv_connector = RVConnector()
-        if not rv_connector.is_connected:
-            result = self._handle_not_connected(selection, repre_entities)
-            if result is not None:
-                return result
-
-        payload = json.dumps([
-            {
-                "objectName": repre_entity["name"],
-                "representation": repre_entity["id"],
-            }
-            for repre_entity in repre_entities
-        ])
-        # This also retries the connection
-        with rv_connector:
-            rv_connector.send_event(
-                "ayon_load_container",
-                payload,
-                shall_return=False
-            )
-
-        return LoaderActionResult("Sent to OpenRV.", success=True)
-
-    def _handle_not_connected(
-        self,
-        selection: LoaderActionSelection,
-        repre_entities: list[dict[str, Any]],
-    ) -> LoaderActionResult | None:
-        """Handle missing connection to OpenRV.
-
-        Returns:
-            LoaderActionResult | None: Result to return from the action
-                or 'None' to continue with sending the representations.
-
-        """
-        raise NotImplementedError
-
     def _get_selected_representations(
         self, selection: LoaderActionSelection
     ) -> list[dict[str, Any]]:
@@ -131,6 +70,22 @@ class _BasePlayInRVAction(LoaderActionPlugin):
                 selection.selected_ids
             )
         return []
+
+    def _get_representations(
+        self,
+        selection: LoaderActionSelection,
+        data: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        """Representation entities of an action item.
+
+        Returns an empty list when the item data is not usable or when the
+        representations cannot be found anymore.
+
+        """
+        repre_ids = data.get("representation_ids") if data else None
+        if not repre_ids:
+            return []
+        return selection.entities.get_representations(set(repre_ids))
 
     def _is_supported_representation(self, repre: dict[str, Any]) -> bool:
         repre_context = repre.get("context") or {}
@@ -150,96 +105,49 @@ class _BasePlayInRVAction(LoaderActionPlugin):
 
 
 class PlayInRVAction(_BasePlayInRVAction):
-    """Open representations in OpenRV, launch OpenRV if is not running.
+    """Open representations in a new OpenRV instance.
 
-    It expects to be run only on representations published to any task!
+    A new instance is always started, on a network port no other session
+    uses, even when an OpenRV session is already running. Use 'Open in
+    Existing RV' to add representations to the running session.
     """
     identifier = "openrv.play-in-rv"
     label = "Open in RV"
 
-    def _handle_not_connected(
+    def execute_action(
         self,
         selection: LoaderActionSelection,
-        repre_entities: list[dict[str, Any]],
+        data: dict[str, Any],
+        form_values: dict[str, Any],
     ) -> LoaderActionResult | None:
-        # get launch context variables
-        project_name = selection.project_name
-        folder_path, task_name = self._get_launch_context(
-            selection, repre_entities[0]
-        )
-        if not folder_path:
+        addon = self._context.get_addons_manager().get("openrv")
+        if addon is None:
             return LoaderActionResult(
-                "Selected representation does not have available folder."
-                " It is not possible to start OpenRV.",
+                "OpenRV is not available in the current AYON bundle.",
                 success=False,
             )
 
-        # launch RV with context
-        app_manager = ApplicationManager()
-        openrv_app = app_manager.find_latest_available_variant_for_group(
-            "openrv"
-        )
-        if not openrv_app:
+        repre_entities = self._get_representations(selection, data)
+        if not repre_entities:
             return LoaderActionResult(
-                "No configured OpenRV found in"
-                " Applications. Ask admin to configure it"
-                " in ayon+settings://applications/applications/openrv.",
+                "Failed to find representations in AYON.",
                 success=False,
             )
-        openrv_app.launch(
-            project_name=project_name,
-            folder_path=folder_path,
-            task_name=task_name,
-            # Enforce the `-network` argument so that RV allows receiving
-            # the event we will send it. Note that passing `-network`
-            # multiple times seems fine, so if app arguments or a
-            # pre-launch hook may be enforcing it as well it should not
-            # cause any issues.
-            app_args=["-network"],
+
+        try:
+            addon.open_representations_in_new_rv(
+                selection.project_name, repre_entities
+            )
+        except Exception as error:
+            self.log.warning(
+                "Failed to open representations in a new OpenRV instance.",
+                exc_info=True,
+            )
+            return LoaderActionResult(str(error), success=False)
+
+        return LoaderActionResult(
+            "Opened in a new OpenRV instance.", success=True
         )
-        return None
-
-    def _get_launch_context(
-        self,
-        selection: LoaderActionSelection,
-        repre_entity: dict[str, Any],
-    ) -> tuple[str | None, str | None]:
-        version_id = repre_entity["versionId"]
-        products = selection.entities.get_versions_products({version_id})
-        folders = selection.entities.get_products_folders(
-            {product["id"] for product in products}
-        )
-        if not folders:
-            return None, None
-        folder_entity = folders[0]
-        folder_path = folder_entity.get("path")
-
-        # could be published without task from Publisher
-        tasks = selection.entities.get_versions_tasks({version_id})
-        task_name = None
-        if tasks:
-            task_name = tasks[0]["name"]
-
-        if not task_name:
-            repre_context = repre_entity.get("context") or {}
-            task_info = repre_context.get("task")
-            if isinstance(task_info, str):
-                task_name = task_info
-            elif isinstance(task_info, dict):
-                task_name = task_info.get("name")
-
-            if task_name:
-                # Validate the task exists on the folder
-                folder_task_names = {
-                    task["name"]
-                    for task in selection.entities.get_folders_tasks(
-                        {folder_entity["id"]}
-                    )
-                }
-                if task_name not in folder_task_names:
-                    task_name = None
-
-        return folder_path, task_name
 
 
 class PlayInExistingRVAction(_BasePlayInRVAction):
@@ -247,13 +155,43 @@ class PlayInExistingRVAction(_BasePlayInRVAction):
     identifier = "openrv.play-in-existing-rv"
     label = "Open in Existing RV"
 
-    def _handle_not_connected(
+    def execute_action(
         self,
         selection: LoaderActionSelection,
-        repre_entities: list[dict[str, Any]],
+        data: dict[str, Any],
+        form_values: dict[str, Any],
     ) -> LoaderActionResult | None:
-        return LoaderActionResult(
-            "No existing OpenRV connection found."
-            " Make sure OpenRV is running and network connected.",
-            success=False,
-        )
+        repre_entities = self._get_representations(selection, data)
+        if not repre_entities:
+            return LoaderActionResult(
+                "Failed to find representations in AYON.",
+                success=False,
+            )
+
+        rv_connector = RVConnector()
+        if not rv_connector.is_connected:
+            return LoaderActionResult(
+                "No existing OpenRV connection found."
+                " Make sure OpenRV is running and network connected.",
+                success=False,
+            )
+
+        # The project is sent with the event: the running session can be in
+        # another project than the representations come from.
+        payload = json.dumps([
+            {
+                "objectName": repre_entity["name"],
+                "representation": repre_entity["id"],
+                "project_name": selection.project_name,
+            }
+            for repre_entity in repre_entities
+        ])
+        # This also retries the connection
+        with rv_connector:
+            rv_connector.send_event(
+                "ayon_load_container",
+                payload,
+                shall_return=False
+            )
+
+        return LoaderActionResult("Sent to OpenRV.", success=True)

@@ -20,7 +20,7 @@ from ayon_core.pipeline.load import get_loaders_by_name
 from ayon_core.settings import get_project_settings
 from ayon_core.tools.utils import host_tools
 from ayon_openrv.api import OpenRVHost
-from ayon_openrv.networking import LoadContainerHandler
+from ayon_openrv.networking import LoadContainerHandler, RVConnector
 from qtpy.QtCore import QEvent, QObject, QTimer
 from qtpy.QtWidgets import QApplication
 from rv.rvtypes import MinorMode
@@ -111,6 +111,14 @@ class AYONMenus(MinorMode):
                 "ayon_load_container",
                 on_ayon_load_container,
                 "Loads an AYON representation into the session.",
+            ),
+            (
+                "remote-contact-error-show",
+                on_remote_contact_error_show,
+                (
+                    "Hide RV network errors caused by the AYON controller"
+                    " connection."
+                ),
             ),
             (
                 "session-initialized",
@@ -299,6 +307,35 @@ def data_loader():
     load_representations(
         representation_ids=decoded_data["representation_ids"]
     )
+
+
+def get_ayon_connection_name() -> str:
+    """Return the network connection name the AYON addon connects with."""
+    try:
+        settings = RVConnector._get_settings()
+        return settings["network"]["conn_name"]
+    except Exception:
+        return "ayon-rv-connect"
+
+
+def on_remote_contact_error_show(event):
+    """RV asks whether a network contact error should be shown to the user.
+
+    The AYON addon connects to a running OpenRV to push a representation and
+    disconnects right after. RV keeps that connection as a network contact
+    and reports the disconnect as a network error, which is not actionable
+    for the artist. Set the event response to hide it for the AYON connection
+    only.
+    """
+    contact = event.contents() or ""
+    name = contact.split("@")[0]
+    base_name = get_ayon_connection_name()
+    # Connections identify themselves as '<name>-<pid>-<n>' so that RV never
+    # confuses them with a previous connection.
+    if name == base_name or name.startswith(f"{base_name}-"):
+        event.setReturnContent("no")
+        return
+    event.setReturnContent("yes")
 
 
 def on_ayon_load_container(event):

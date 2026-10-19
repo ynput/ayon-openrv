@@ -11,6 +11,7 @@ from ayon_core.addon import (
     click_wrap,
     ensure_addons_are_process_ready,
 )
+from ayon_core.lib.transcoding import IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
 from ayon_core.pipeline import get_representation_path
 
 
@@ -116,6 +117,11 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
                 default=None,
                 help="OpenRV app variant full name (e.g. openrv/2025)",
             )
+            .option(
+                "--use-existing-rv-instance",
+                is_flag=True,
+                help="Use an existing OpenRV instance to open the representation",
+            )
         )
         addon_click_group.add_command(main_group.to_click_obj())
 
@@ -150,7 +156,7 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
         self._launch_openrv(
             project_name,
             folder_path,
-            task_name,
+            task_name=task_name,
             app_name=app,
             workfile_path=repre_path,
             # After opening unset the session filename to avoid user
@@ -163,8 +169,16 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
         project: str,
         app: str,
         representation: str,
+        use_existing_rv_instance: bool = False,
     ):
         project_name = project
+        if use_existing_rv_instance:
+            return self._cli_open_representation_in_existing_rv(
+                project_name,
+                representation,
+                app_name=app,
+            )
+
         repre_entity = ayon_api.get_representation_by_id(
             project_name,
             representation,
@@ -179,25 +193,187 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
                 project_name, repre_entity
             )
         )
-
         if repre_entity["name"] == "rv":
             repre_path = get_representation_path(project_name, repre_entity)
+            # A workfile is opened by a new instance as well. It has to get a
+            # port no other session uses for the same reason as media, so the
+            # instance is network connected and reachable on its own port.
             self._launch_openrv(
                 project_name,
                 folder_path,
-                task_name,
+                task_name=task_name,
                 app_name=app,
                 workfile_path=repre_path,
                 unset_session_filename=True,
+                network_port=self._get_free_network_port(),
             )
         else:
-            self._launch_openrv(
-                project_name,
-                folder_path,
-                task_name,
-                app_name=app,
-                representation_id=representation,
+            # A new OpenRV instance is launched and the representation is
+            # pushed over its network connection. The
+            # 'AYON_LOADER_REPRESENTATIONS' env file is consumed while RV is
+            # still creating its mode, which loaded nothing and left an empty
+            # session.
+            self.open_representations_in_new_rv(
+                project_name, [repre_entity], app_name=app
             )
+
+    def open_representations_in_new_rv(
+        self,
+        project_name: str,
+        representations: list[dict[str, str]],
+        app_name: str | None = None,
+    ) -> int:
+        """Open representations in a new OpenRV instance.
+
+        The instance is launched on a network port no other session uses,
+        and every representation is sent to it.
+
+        Args:
+            project_name (str): Project the representations belong to.
+            representations (list[dict[str, str]]): Representation entities.
+            app_name (Optional[str]): OpenRV application variant to launch.
+
+        Returns:
+            int: Network port the instance was launched on.
+
+        """
+        from ayon_core.pipeline.load import LoadError
+
+        from ayon_openrv.networking import send_representation_to_existing_rv
+
+        if not representations:
+            raise RuntimeError("No representation passed to open in OpenRV.")
+
+        network_port = self._get_free_network_port()
+        folder_path, task_name = self._get_launch_context_for_representation(
+            project_name, representations[0]
+        )
+        self.log.info("Launching OpenRV on network port %s.", network_port)
+        self._launch_openrv(
+            project_name,
+            folder_path,
+            task_name=task_name,
+            app_name=app_name,
+            network_port=network_port,
+        )
+
+        for representation in representations:
+            self.log.info(
+                "Sending representation '%s' to the OpenRV instance on port"
+                " %s.",
+                representation["id"],
+                network_port,
+            )
+            try:
+                send_representation_to_existing_rv(
+                    project_name,
+                    representation,
+                    wait_for_connection=True,
+                    port=network_port,
+                )
+            except LoadError as error:
+                raise LoadError(
+                    "OpenRV was launched on network port"
+                    f" {network_port} but nothing is listening on it. Check"
+                    " the OpenRV variant arguments and pre-launch hooks for"
+                    " '-network' / '-networkPort' settings, they must not"
+                    " override the port AYON passes."
+                ) from error
+
+        return network_port
+
+    def _get_free_network_port(self) -> int:
+        """Network port a new OpenRV instance can use.
+
+        The configured port is used when no other session uses it, otherwise
+        a free port is picked: a new instance must not try to share the port
+        of a running session, it would not be able to start its network
+        connection and stay empty. A session is detected by connecting to the
+        port, a bind test does not see a session listening on another address
+        of the machine.
+
+        Returns:
+            int: Network port for a new OpenRV instance.
+
+        """
+        from ayon_openrv.networking import (
+            find_available_network_port,
+            is_network_port_available,
+            is_network_port_listening,
+        )
+
+        network_port = self._get_network_port()
+        if is_network_port_available(network_port) and (
+            not is_network_port_listening(network_port)
+        ):
+            return network_port
+        return find_available_network_port()
+
+    def _cli_open_representation_in_existing_rv(
+        self,
+        project: str,
+        representation: str,
+        app_name: str | None = None,
+    ):
+        from ayon_openrv.networking import (
+            is_network_port_listening,
+            send_representation_to_existing_rv,
+        )
+
+        repre_entity = ayon_api.get_representation_by_id(
+            project, representation
+        )
+        if repre_entity is None:
+            raise RuntimeError(
+                "Could not find representation by the provided id."
+            )
+        extension = repre_entity.get("context", {}).get("ext")
+        if not extension:
+            repre_path = get_representation_path(project, repre_entity)
+            if not repre_path:
+                raise RuntimeError(
+                    "Could not resolve the representation's media extension."
+                )
+            extension = os.path.splitext(repre_path)[1]
+        extension = "." + extension.lstrip(".").lower()
+        if extension not in IMAGE_EXTENSIONS | VIDEO_EXTENSIONS:
+            raise RuntimeError(
+                f"Representation extension '{extension}' is not supported"
+                " in existing OpenRV. Only image and video representations"
+                " can be opened; RV workfiles require a new OpenRV instance."
+            )
+
+        network_port = self._get_network_port()
+        if not is_network_port_listening(network_port):
+            # Nothing is listening on the configured port. Launching a new
+            # OpenRV instance is what the user wants, asking them to pick
+            # another option would only be confusing.
+            self.log.info(
+                "No OpenRV session is running on network port %s, launching"
+                " a new OpenRV instance.",
+                network_port,
+            )
+            return self._cli_open_representation(
+                project,
+                app_name,
+                representation,
+                use_existing_rv_instance=False,
+            )
+
+        self.log.info(
+            "Sending representation '%s' to the OpenRV session on port %s.",
+            repre_entity["id"],
+            network_port,
+        )
+        send_representation_to_existing_rv(project, repre_entity)
+
+    def _get_network_port(self) -> int:
+        """Return the configured OpenRV network port."""
+        try:
+            settings = ayon_api.get_addon_settings(self.name, self.version)
+            return int(settings["network"]["conn_port"])
+        except Exception:
+            return 45124
 
     def _get_launch_context_for_representation(
         self,
@@ -255,12 +431,13 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
         self,
         project_name: str,
         folder_path: str,
-        task_name: str,
         *,
+        task_name: str | None = None,
         app_name: str | None = None,
         workfile_path: str | None = None,
         unset_session_filename: bool = False,
         representation_id: str | None = None,
+        network_port: int | None = None,
     ):
         from ayon_applications import ApplicationManager
 
@@ -282,14 +459,19 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
         env = os.environ.copy()
         if unset_session_filename:
             env["AYON_RV_UNSET_SESSION"] = "1"
+        app_args = ["-network"]
+        if network_port is not None:
+            app_args.extend(["-networkPort", str(network_port)])
 
         launch_kwargs = dict(
             project_name=project_name,
             folder_path=folder_path,
-            task_name=task_name,
             workfile_path=workfile_path,
             env=env,
+            app_args=app_args,
         )
+        if task_name is not None:
+            launch_kwargs["task_name"] = task_name
         # Used by prelaunch hook to load on launch
         if representation_id is not None:
             launch_kwargs["representation_ids"] = [representation_id]

@@ -179,45 +179,142 @@ async def execute_open_in_rv_action(
     project_name = context.project_name
     version_id = entity_ids[0]
     form_data = context.form_data or {}
-    form = SimpleForm()
-
-    representation_id = form_data.get("representation_id")
-    if not representation_id:
-        # Prefer an RV workfile representation; fall back to any media
-        # representation.
-        representation_id = await _get_rv_workfile_representation_id(
-            project_name, version_id
+    app_options = await _get_openrv_app_options(executor.variant)
+    if not app_options:
+        return await executor.get_simple_response(
+            success=False,
+            message=(
+                "No OpenRV variants are configured in Applications "
+                "settings for this bundle variant."
+            ),
         )
-        if representation_id is None:
-            media_repres = await _get_media_representations(
-                project_name,
-                version_id
-            )
-            # If there are multiple media representations, ask the user to
-            # select one.
-            if len(media_repres) > 1:
-                form.select(
-                    name="representation_id",
-                    label="Representation",
-                    options=[
-                        FormSelectOption(
-                            value=repre["id"],
-                            label=repre["name"],
-                        )
-                        for repre in media_repres
-                    ],
-                    value=media_repres[0]["id"],
-                )
-                return await executor.get_form_response(
-                    success=True,
-                    title="Select representation to open in RV",
-                    fields=form,
-                    form_data=form_data,
-                )
-            representation_id = media_repres[0]["id"]
+    allowed_apps = {value for value, _ in app_options}
 
-    # Store the representation_id
-    form.hidden("representation_id", value=representation_id)
+    media_repres = await _get_media_representations(
+        project_name, version_id
+    )
+    media_by_id = {repre["id"]: repre for repre in media_repres}
+    workfile_representation_id = (
+        await _get_rv_workfile_representation_id(project_name, version_id)
+    )
+    app_name = form_data.get("app_name")
+    media_representation_id = form_data.get("media_representation_id")
+    instance_option = form_data.get(
+        "use_existing_rv_instance"
+    )
+    if instance_option is None or isinstance(instance_option, bool):
+        use_existing_rv_instance = instance_option
+    elif instance_option == "yes":
+        use_existing_rv_instance = True
+    elif instance_option == "no":
+        use_existing_rv_instance = False
+    else:
+        return await executor.get_simple_response(
+            success=False,
+            message="Selected OpenRV instance option must be Yes or No.",
+        )
+
+    # Keep accepting representation_id from a form submitted before this
+    # combined form was displayed, but only when it identifies media.
+    previous_representation_id = form_data.get("representation_id")
+    if (
+        media_representation_id is None
+        and isinstance(previous_representation_id, str)
+        and previous_representation_id in media_by_id
+    ):
+        media_representation_id = previous_representation_id
+
+    if (
+        app_name is None
+        or use_existing_rv_instance is None
+        or (media_repres and media_representation_id is None)
+    ):
+        form = SimpleForm()
+        form.select(
+            name="app_name",
+            label="OpenRV variant",
+            options=[
+                FormSelectOption(value=value, label=label)
+                for value, label in app_options
+            ],
+            value=(
+                app_name
+                if app_name in allowed_apps
+                else app_options[0][0]
+            ),
+        )
+        boolean_options = [(True, "Yes"), (False, "No")]
+        form.select(
+            name="use_existing_rv_instance",
+            label="Use existing OpenRV Session",
+            options=[
+                FormSelectOption(value=value, label=label)
+                for value, label in boolean_options
+            ],
+            value=boolean_options[0][0],
+        )
+        if media_repres:
+            form.select(
+                name="media_representation_id",
+                label="Media representation",
+                options=[
+                    FormSelectOption(
+                        value=repre["id"],
+                        label=repre["name"],
+                    )
+                    for repre in media_repres
+                ],
+                value=(
+                    media_representation_id
+                    if media_representation_id in media_by_id
+                    else media_repres[0]["id"]
+                ),
+            )
+        return await executor.get_form_response(
+            success=True,
+            title="Choose OpenRV options",
+            fields=form,
+            form_data=form_data,
+        )
+
+    if app_name not in allowed_apps:
+        return await executor.get_simple_response(
+            success=False,
+            message="Selected OpenRV variant is not available.",
+        )
+
+    if (
+        media_representation_id is not None
+        and (
+            not isinstance(media_representation_id, str)
+            or media_representation_id not in media_by_id
+        )
+    ):
+        return await executor.get_simple_response(
+            success=False,
+            message="Selected media representation is not available.",
+        )
+
+    if use_existing_rv_instance:
+        if media_representation_id is None:
+            return await executor.get_simple_response(
+                success=False,
+                message=(
+                    "Selected version has no media representation that"
+                    " can be opened in an existing OpenRV session. Select"
+                    " 'No' to open a published RV workfile instead."
+                ),
+            )
+        representation_id = media_representation_id
+    elif media_representation_id is not None:
+        # Open the media of the selected version. Opening the RV workfile of
+        # the task would open the version the workfile belongs to, and that
+        # replaces the selected one.
+        representation_id = media_representation_id
+    elif workfile_representation_id is not None:
+        representation_id = workfile_representation_id
+    else:
+        representation_id = media_representation_id
 
     if representation_id is None:
         return await executor.get_simple_response(
@@ -228,59 +325,20 @@ async def execute_open_in_rv_action(
             ),
         )
 
-    app_name = form_data.get("app_name")
-    app_options = await _get_openrv_app_options(executor.variant)
-    if not app_name and len(app_options) == 1:
-        app_name = app_options[0][0]
-
-    if not app_name:
-        if not app_options:
-            return await executor.get_simple_response(
-                success=False,
-                message=(
-                    "No OpenRV variants are configured in Applications "
-                    "settings for this bundle variant."
-                ),
-            )
-
-        form.label("Select OpenRV version to launch")
-        form.select(
-            name="app_name",
-            label="OpenRV variant",
-            options=[
-                FormSelectOption(
-                    value=value,
-                    label=label,
-                )
-                for value, label in app_options
-            ],
-            value=app_options[0][0],
-        )
-        return await executor.get_form_response(
-            success=True,
-            title="Select OpenRV variant",
-            fields=form,
-            form_data=form_data,
-        )
-
-    allowed_apps = {value for value, _ in app_options}
-    if app_name not in allowed_apps:
-        return await executor.get_simple_response(
-            success=False,
-            message="Selected OpenRV variant is not available.",
-        )
-
+    args = [
+        "addon",
+        "openrv",
+        "open-representation",
+        "--project",
+        project_name,
+        "--app",
+        app_name,
+        "--representation",
+        representation_id,
+    ]
+    if use_existing_rv_instance:
+        args.append("--use-existing-rv-instance")
     return await executor.get_launcher_response(
-        args=[
-            "addon",
-            "openrv",
-            "open-representation",
-            "--project",
-            project_name,
-            "--app",
-            app_name,
-            "--representation",
-            representation_id,
-        ],
+        args=args,
         message="Launching OpenRV...",
     )
