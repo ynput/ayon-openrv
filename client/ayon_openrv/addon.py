@@ -156,7 +156,7 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
         self._launch_openrv(
             project_name,
             folder_path,
-            task_name,
+            task_name=task_name,
             app_name=app,
             workfile_path=repre_path,
             # After opening unset the session filename to avoid user
@@ -201,7 +201,7 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
             self._launch_openrv(
                 project_name,
                 folder_path,
-                task_name,
+                task_name=task_name,
                 app_name=app,
                 workfile_path=repre_path,
                 unset_session_filename=True,
@@ -252,7 +252,7 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
         self._launch_openrv(
             project_name,
             folder_path,
-            task_name,
+            task_name=task_name,
             app_name=app_name,
             network_port=network_port,
         )
@@ -431,8 +431,8 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
         self,
         project_name: str,
         folder_path: str,
-        task_name: str,
         *,
+        task_name: str | None = None,
         app_name: str | None = None,
         workfile_path: str | None = None,
         unset_session_filename: bool = False,
@@ -466,11 +466,12 @@ class OpenRVAddon(AYONAddon, IHostAddon, IPluginPaths):
         launch_kwargs = dict(
             project_name=project_name,
             folder_path=folder_path,
-            task_name=task_name,
             workfile_path=workfile_path,
             env=env,
             app_args=app_args,
         )
+        if task_name is not None:
+            launch_kwargs["task_name"] = task_name
         # Used by prelaunch hook to load on launch
         if representation_id is not None:
             launch_kwargs["representation_ids"] = [representation_id]
