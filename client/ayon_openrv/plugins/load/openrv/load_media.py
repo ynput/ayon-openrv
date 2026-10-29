@@ -252,9 +252,18 @@ class BaseMediaLoader(load.LoaderPlugin):
             self.log.info(f"Setting colorspace: {colorspace}")
             group = rv.commands.nodeGroup(node)
 
-            # Enable OCIO for the node and set the colorspace
-            set_group_ocio_active_state(group, state=True)
-            set_group_ocio_colorspace(group, colorspace)
+            # Enable OCIO for the node and set the colorspace. A failure here
+            # must not stop the load, otherwise the source is never imprinted
+            # as a container.
+            try:
+                set_group_ocio_active_state(group, state=True)
+                set_group_ocio_colorspace(group, colorspace)
+            except Exception:
+                self.log.error(
+                    f"Failed to set colorspace '{colorspace}' for {node}."
+                    " The media is loaded without the colorspace applied.",
+                    exc_info=True,
+                )
 
 
 class FramesLoader(BaseMediaLoader):
