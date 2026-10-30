@@ -11,7 +11,11 @@ from ayon_openrv.api.ocio import (
     set_group_ocio_active_state,
     set_group_ocio_colorspace,
 )
-from ayon_openrv.api.pipeline import imprint_container
+from ayon_openrv.api.pipeline import (
+    AYON_ATTR_PREFIX,
+    imprint,
+    imprint_container,
+)
 
 import rv
 import rv.extra_commands
@@ -187,6 +191,25 @@ class BaseMediaLoader(load.LoaderPlugin):
                 f"New rep name already in source_reps: {new_rep_name}"
             )
 
+        # Each version is its own source node in the switch group. Tag the
+        # version's source with its representation, because tools like the
+        # review desktop activity feed read it from the source in view.
+        # Do this before activating it so the view change sees the data.
+        rep_node = self._get_source_media_rep_node(node, new_rep_name)
+        if rep_node:
+            imprint(
+                rep_node,
+                {
+                    "representation": str(repre_entity["id"]),
+                    "project_name": str(context["project"]["name"]),
+                },
+                prefix=AYON_ATTR_PREFIX,
+            )
+        else:
+            self.log.warning(
+                f"Unable to find the source of version '{new_rep_name}'"
+            )
+
         # activate the new version in the switch group
         rv.commands.setActiveSourceMediaRep(
             node,
@@ -195,9 +218,9 @@ class BaseMediaLoader(load.LoaderPlugin):
         source_rep_name = rv.commands.sourceMediaRep(node)
         self.log.debug(f"New source_rep_name: {source_rep_name}")
 
-        # update colorspace
+        # update colorspace on the source of the version
         representation = context["representation"]
-        self.set_representation_colorspace(node, representation)
+        self.set_representation_colorspace(rep_node or node, representation)
 
         # add data for inventory manager
         rv.commands.setStringProperty(
@@ -209,6 +232,34 @@ class BaseMediaLoader(load.LoaderPlugin):
 
         # Show the version that was switched to
         self._set_view_to_node(node)
+
+        rv.commands.sendInternalEvent(
+            "ayon-source-loaded",
+            str(rep_node or node),
+            self.__class__.__name__,
+        )
+
+    @staticmethod
+    def _get_source_media_rep_node(node, rep_name):
+        """Return the source node of a media representation of the source.
+
+        Args:
+            node (str): A source node of the switch group.
+            rep_name (str): Name of the media representation.
+
+        Returns:
+            Optional[str]: The source node of the media representation.
+
+        """
+        switch_node = rv.commands.sourceMediaRepSwitchNode(node)
+        if not switch_node:
+            return None
+        for name, source_node in rv.commands.sourceMediaRepsAndNodes(
+            switch_node
+        ):
+            if name == rep_name:
+                return source_node
+        return None
 
     def remove(self, container: dict) -> None:  # noqa: PLR6301
         """Remove loaded container."""
@@ -252,9 +303,18 @@ class BaseMediaLoader(load.LoaderPlugin):
             self.log.info(f"Setting colorspace: {colorspace}")
             group = rv.commands.nodeGroup(node)
 
-            # Enable OCIO for the node and set the colorspace
-            set_group_ocio_active_state(group, state=True)
-            set_group_ocio_colorspace(group, colorspace)
+            # Enable OCIO for the node and set the colorspace. A failure here
+            # must not stop the load, otherwise the source is never imprinted
+            # as a container.
+            try:
+                set_group_ocio_active_state(group, state=True)
+                set_group_ocio_colorspace(group, colorspace)
+            except Exception:
+                self.log.error(
+                    f"Failed to set colorspace '{colorspace}' for {node}."
+                    " The media is loaded without the colorspace applied.",
+                    exc_info=True,
+                )
 
 
 class FramesLoader(BaseMediaLoader):
