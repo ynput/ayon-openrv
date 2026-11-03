@@ -7,10 +7,7 @@ from typing import ClassVar
 
 from ayon_core.lib.transcoding import IMAGE_EXTENSIONS
 from ayon_core.pipeline import load
-from ayon_openrv.api.ocio import (
-    set_group_ocio_active_state,
-    set_group_ocio_colorspace,
-)
+from ayon_openrv.api.ocio import set_group_ocio_colorspace
 from ayon_openrv.api.pipeline import (
     AYON_ATTR_PREFIX,
     imprint,
@@ -297,9 +294,6 @@ class BaseMediaLoader(load.LoaderPlugin):
         colorspace_data = representation.get("data", {}).get("colorspaceData")
         if colorspace_data:
             colorspace = colorspace_data["colorspace"]
-            # TODO: Confirm colorspace is valid in current OCIO config
-            #   otherwise errors will be spammed from OpenRV for invalid space
-
             self.log.info(f"Setting colorspace: {colorspace}")
             group = rv.commands.nodeGroup(node)
 
@@ -307,7 +301,6 @@ class BaseMediaLoader(load.LoaderPlugin):
             # must not stop the load, otherwise the source is never imprinted
             # as a container.
             try:
-                set_group_ocio_active_state(group, state=True)
                 set_group_ocio_colorspace(group, colorspace)
             except Exception:
                 self.log.error(
