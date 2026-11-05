@@ -47,10 +47,6 @@ class OpenRVHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
     def save_workfile(self, filepath=None):
         return rv.commands.saveSession(filepath)
 
-    def work_root(self, session):
-        work_dir = session.get("AYON_WORKDIR")
-        return work_dir
-
     def get_current_workfile(self):
         filename = rv.commands.sessionFileName()
         if filename == "Untitled":
