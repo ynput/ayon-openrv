@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from typing import ClassVar
 
+import clique
 from ayon_core.lib.transcoding import IMAGE_EXTENSIONS
 from ayon_core.pipeline import load
 from ayon_openrv.api.ocio import set_group_ocio_colorspace
@@ -16,6 +17,10 @@ from ayon_openrv.api.pipeline import (
 
 import rv
 import rv.extra_commands
+
+# Frame number at the end of a file name, e.g. `name.1001.exr` or
+# `name_1001.exr`. Same as `ayon_core` uses to collect frames of files.
+FRAME_PATTERN = r"[_.](?P<index>(?P<padding>0*)\d+)\.\D+\d?$"
 
 
 class BaseMediaLoader(load.LoaderPlugin):
@@ -321,9 +326,34 @@ class FramesLoader(BaseMediaLoader):
 
     @classmethod
     def filepath_from_context(cls, context):
-        return rv.commands.sequenceOfFile(
-            super().filepath_from_context(context)
-        )[0]
+        """Return the representation's frames as an OpenRV file pattern.
+
+        The sequence is assembled from the representation's files instead of
+        `rv.commands.sequenceOfFile`, because the latter only detects
+        sequences of at least five files (`TWK_MIN_SEQUENCE_SIZE`).
+
+        """
+        filepath = super().filepath_from_context(context)
+        filenames = [
+            os.path.basename(repre_file["path"])
+            for repre_file in context["representation"]["files"]
+        ]
+        collections, _ = clique.assemble(
+            filenames,
+            patterns=[FRAME_PATTERN],
+            assume_padded_when_ambiguous=True,
+        )
+        filename = os.path.basename(filepath)
+        for collection in collections:
+            if filename in collection:
+                # e.g. `name.1001-1010%04d.exr`
+                return os.path.join(
+                    os.path.dirname(filepath),
+                    collection.format("{head}{range}{padding}{tail}"),
+                )
+
+        # Single frame or frame number not at the end of the file name
+        return rv.commands.sequenceOfFile(filepath)[0]
 
 
 class MovLoader(BaseMediaLoader):
