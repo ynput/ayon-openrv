@@ -209,9 +209,6 @@ class AYONMenus(MinorMode):
     def scene_inventory(self, event):
         host_tools.show_scene_inventory(parent=self._parent)
 
-    def library(self, event):
-        host_tools.show_library_loader(parent=self._parent)
-
     def _on_app_closing(self):
         self._is_closing = True
 
@@ -276,7 +273,6 @@ class AYONMenus(MinorMode):
             ("Load...", self.load, None, None),
             ("Publish...", self.publish, None, None),
             ("Manage...", self.scene_inventory, None, None),
-            ("Library...", self.library, None, None),
             ("_", None),  # separator
             ("Work Files...", self.workfiles, None, None),
         ]
